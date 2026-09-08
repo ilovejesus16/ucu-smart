@@ -24,7 +24,8 @@
         </h1>
 
         <p class="text-gray-500 mt-2">
-            Find available classrooms and navigate around the UCU campus.
+            Find available classrooms and access campus navigation
+            through UCU Smart+.
         </p>
 
     </div>
@@ -131,11 +132,10 @@
 
 
         <!-- ===================================================== -->
-        <!-- CAMPUS NAVIGATION -->
+        <!-- UCU SMART+ MOBILE -->
         <!-- ===================================================== -->
 
-        <a
-            href="#"
+        <div
             class="group bg-white
                    rounded-2xl
                    border border-gray-200
@@ -174,16 +174,9 @@
                                    font-bold
                                    text-[#0E2958]">
 
-                            Campus Navigation
+                            UCU Smart+ Mobile
 
                         </h2>
-
-                        <x-heroicon-o-arrow-right
-                            class="w-5 h-5
-                                   text-[#0E4C6B]
-                                   group-hover:translate-x-1
-                                   transition
-                                   flex-shrink-0"/>
 
                     </div>
 
@@ -193,8 +186,8 @@
                                mt-2
                                leading-relaxed">
 
-                        Find buildings and classrooms around
-                        the UCU campus using the navigation system.
+                        Campus navigation is available through the
+                        UCU Smart+ mobile application.
 
                     </p>
 
@@ -202,12 +195,20 @@
                     <div
                         class="mt-5
                                inline-flex
-                               items-center gap-2
+                               items-center
+                               gap-2
+                               bg-[#0E2958]
+                               text-white
+                               px-4
+                               py-2.5
+                               rounded-xl
                                text-sm
-                               font-semibold
-                               text-gray-400">
+                               font-semibold">
 
-                        Coming Soon
+                        <x-heroicon-o-arrow-down-tray
+                            class="w-4 h-4"/>
+
+                        Get the Mobile App
 
                     </div>
 
@@ -215,7 +216,8 @@
 
             </div>
 
-        </a>
+        </div>
+
 
     </div>
 
@@ -243,7 +245,9 @@
             </h2>
 
             <p class="text-gray-500 mt-1">
+
                 Quickly find the information you need around campus.
+
             </p>
 
         </div>
@@ -255,7 +259,9 @@
                    gap-5">
 
 
-            <!-- Step 1 -->
+            <!-- ================================================= -->
+            <!-- STEP 1 -->
+            <!-- ================================================= -->
 
             <div
                 class="rounded-xl
@@ -276,6 +282,7 @@
 
                 </div>
 
+
                 <h3
                     class="font-bold
                            text-gray-800
@@ -285,20 +292,24 @@
 
                 </h3>
 
+
                 <p
                     class="text-sm
                            text-gray-500
                            mt-1
                            leading-relaxed">
 
-                    Browse the available buildings on campus.
+                    Browse the available buildings and facilities
+                    around the campus.
 
                 </p>
 
             </div>
 
 
-            <!-- Step 2 -->
+            <!-- ================================================= -->
+            <!-- STEP 2 -->
+            <!-- ================================================= -->
 
             <div
                 class="rounded-xl
@@ -319,6 +330,7 @@
 
                 </div>
 
+
                 <h3
                     class="font-bold
                            text-gray-800
@@ -327,6 +339,7 @@
                     Check a Room
 
                 </h3>
+
 
                 <p
                     class="text-sm
@@ -342,7 +355,9 @@
             </div>
 
 
-            <!-- Step 3 -->
+            <!-- ================================================= -->
+            <!-- STEP 3 -->
+            <!-- ================================================= -->
 
             <div
                 class="rounded-xl
@@ -363,14 +378,16 @@
 
                 </div>
 
+
                 <h3
                     class="font-bold
                            text-gray-800
                            mt-4">
 
-                    Navigate Campus
+                    Navigate with Mobile
 
                 </h3>
+
 
                 <p
                     class="text-sm
@@ -378,16 +395,18 @@
                            mt-1
                            leading-relaxed">
 
-                    Use campus navigation to locate
-                    buildings and classrooms.
+                    Use the UCU Smart+ mobile application
+                    to navigate around the campus.
 
                 </p>
 
             </div>
 
+
         </div>
 
     </div>
+
 
 </div>
 

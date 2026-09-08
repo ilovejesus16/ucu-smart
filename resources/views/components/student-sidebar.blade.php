@@ -1,4 +1,8 @@
-<div x-data="{ open: false }">
+<div
+    x-data="{
+        open: false,
+        mobileAppOpen: false
+    }">
 
     <!-- ========================================================= -->
     <!-- MOBILE TOP BAR -->
@@ -23,8 +27,8 @@
 
         </div>
 
-
         <button
+            type="button"
             @click="open = !open"
             class="p-2 rounded-lg
                    hover:bg-[#163A74]
@@ -108,7 +112,6 @@
                     alt="UCU Smart+"
                     class="w-16 h-16 object-contain">
 
-
                 <div>
 
                     <h1
@@ -142,10 +145,13 @@
                    overflow-y-auto">
 
 
-            <!-- Dashboard -->
+            <!-- ================================================= -->
+            <!-- DASHBOARD -->
+            <!-- ================================================= -->
 
             <a
                 href="{{ route('student.dashboard') }}"
+                @click="open = false"
                 class="flex items-center gap-3
                        px-4 py-3
                        rounded-xl
@@ -164,10 +170,13 @@
             </a>
 
 
-            <!-- Room Availability -->
+            <!-- ================================================= -->
+            <!-- ROOM AVAILABILITY -->
+            <!-- ================================================= -->
 
             <a
                 href="{{ route('student.rooms') }}"
+                @click="open = false"
                 class="flex items-center gap-3
                        px-4 py-3
                        rounded-xl
@@ -186,30 +195,39 @@
             </a>
 
 
-            <!-- Campus Navigation -->
+            <!-- ================================================= -->
+            <!-- UCU SMART+ MOBILE -->
+            <!-- ================================================= -->
 
-            <a
-                href="#"
-                class="flex items-center gap-3
-                       px-4 py-3
-                       rounded-xl
-                       transition
-                       hover:bg-[#163A74]">
+        <a
+    href="{{ route('student.campus-navigation') }}"
+    @click="open = false"
+    class="w-full
+           flex items-center gap-3
+           px-4 py-3
+           rounded-xl
+           transition
+           {{ request()->routeIs('student.campus-navigation')
+                ? 'bg-[#0E4C6B] shadow-lg'
+                : 'hover:bg-[#163A74]' }}">
 
-                <x-heroicon-o-map
-                    class="w-6 h-6"/>
+    <x-heroicon-o-map
+        class="w-6 h-6"/>
 
-                <span>
-                    Campus Navigation
-                </span>
+    <span>
+        Campus Navigation
+    </span>
 
-            </a>
+</a>
 
 
-            <!-- My Profile -->
+            <!-- ================================================= -->
+            <!-- MY PROFILE -->
+            <!-- ================================================= -->
 
             <a
                 href="{{ route('student.profile') }}"
+                @click="open = false"
                 class="flex items-center gap-3
                        px-4 py-3
                        rounded-xl
@@ -238,9 +256,6 @@
             class="border-t border-white/10
                    p-5">
 
-
-            <!-- User -->
-
             <div
                 class="flex items-center gap-4
                        mb-5">
@@ -259,7 +274,6 @@
                     ) }}
 
                 </div>
-
 
                 <div class="min-w-0">
 
@@ -312,5 +326,302 @@
         </div>
 
     </aside>
+
+
+    <!-- ========================================================= -->
+    <!-- UCU SMART+ MOBILE MODAL -->
+    <!-- ========================================================= -->
+
+    <div
+        x-show="mobileAppOpen"
+        x-transition.opacity
+        @keydown.escape.window="mobileAppOpen = false"
+        class="fixed inset-0
+               z-[100]
+               flex items-center
+               justify-center
+               p-4
+               bg-black/50"
+        style="display: none;">
+
+        <!-- Modal -->
+
+        <div
+            x-show="mobileAppOpen"
+            x-transition
+            @click.outside="mobileAppOpen = false"
+            class="w-full
+                   max-w-lg
+                   bg-white
+                   rounded-2xl
+                   shadow-2xl
+                   overflow-hidden">
+
+
+            <!-- Header -->
+
+            <div
+                class="bg-[#0E2958]
+                       px-6
+                       py-6
+                       text-white">
+
+                <div
+                    class="flex items-center
+                           justify-between
+                           gap-4">
+
+                    <div class="flex items-center gap-4">
+
+                        <div
+                            class="w-12 h-12
+                                   rounded-xl
+                                   bg-white/10
+                                   flex items-center
+                                   justify-center">
+
+                            <x-heroicon-o-map
+                                class="w-6 h-6"/>
+
+                        </div>
+
+                        <div>
+
+                            <h2
+                                class="text-xl
+                                       font-bold">
+
+                                UCU Smart+ Mobile
+
+                            </h2>
+
+                            <p
+                                class="text-sm
+                                       text-blue-200">
+
+                                Campus Navigation
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Close -->
+
+                    <button
+                        type="button"
+                        @click="mobileAppOpen = false"
+                        class="p-2
+                               rounded-lg
+                               hover:bg-white/10
+                               transition">
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"/>
+
+                        </svg>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Content -->
+
+            <div class="p-6 sm:p-8">
+
+                <h3
+                    class="text-xl
+                           font-bold
+                           text-[#0E2958]">
+
+                    Navigate Around UCU
+
+                </h3>
+
+
+                <p
+                    class="text-gray-500
+                           mt-2
+                           leading-relaxed">
+
+                    Campus navigation is available through the
+                    UCU Smart+ mobile application.
+
+                </p>
+
+
+                <!-- Features -->
+
+                <div
+                    class="mt-6
+                           space-y-3">
+
+                    <div
+                        class="flex items-center gap-3
+                               text-sm text-gray-600">
+
+                        <div
+                            class="w-8 h-8
+                                   rounded-lg
+                                   bg-[#0E4C6B]/10
+                                   flex items-center
+                                   justify-center
+                                   flex-shrink-0">
+
+                            <x-heroicon-o-map
+                                class="w-4 h-4
+                                       text-[#0E4C6B]"/>
+
+                        </div>
+
+                        <span>
+                            Interactive campus map
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        class="flex items-center gap-3
+                               text-sm text-gray-600">
+
+                        <div
+                            class="w-8 h-8
+                                   rounded-lg
+                                   bg-[#0E4C6B]/10
+                                   flex items-center
+                                   justify-center
+                                   flex-shrink-0">
+
+                            <x-heroicon-o-magnifying-glass
+                                class="w-4 h-4
+                                       text-[#0E4C6B]"/>
+
+                        </div>
+
+                        <span>
+                            Search buildings and facilities
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        class="flex items-center gap-3
+                               text-sm text-gray-600">
+
+                        <div
+                            class="w-8 h-8
+                                   rounded-lg
+                                   bg-[#0E4C6B]/10
+                                   flex items-center
+                                   justify-center
+                                   flex-shrink-0">
+
+                            <x-heroicon-o-map-pin
+                                class="w-4 h-4
+                                       text-[#0E4C6B]"/>
+
+                        </div>
+
+                        <span>
+                            Select start and destination
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        class="flex items-center gap-3
+                               text-sm text-gray-600">
+
+                        <div
+                            class="w-8 h-8
+                                   rounded-lg
+                                   bg-[#0E4C6B]/10
+                                   flex items-center
+                                   justify-center
+                                   flex-shrink-0">
+
+                            <x-heroicon-o-arrow-path
+                                class="w-4 h-4
+                                       text-[#0E4C6B]"/>
+
+                        </div>
+
+                        <span>
+                            Get directions around campus
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Download -->
+
+                <div
+                    class="mt-7
+                           pt-6
+                           border-t border-gray-100">
+
+                    <a
+                        href="YOUR_FLUTTER_APP_LINK"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="w-full
+                               inline-flex
+                               items-center
+                               justify-center
+                               gap-2
+                               bg-[#0E2958]
+                               hover:bg-[#0B2147]
+                               text-white
+                               px-5
+                               py-3.5
+                               rounded-xl
+                               font-semibold
+                               transition">
+
+                        <x-heroicon-o-arrow-down-tray
+                            class="w-5 h-5"/>
+
+                        Get the Mobile App
+
+                    </a>
+
+
+                    <p
+                        class="text-xs
+                               text-gray-400
+                               text-center
+                               mt-3">
+
+                        Available for mobile devices.
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>

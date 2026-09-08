@@ -173,21 +173,15 @@
 
 
             <!-- Campus Navigation -->
-            <a
-                href="#"
-                class="flex items-center gap-3
-                       px-4 py-3
-                       rounded-xl
-                       transition
-                       hover:bg-[#163A74]">
-
-                <x-heroicon-o-map class="w-6 h-6"/>
-
-                <span>
-                    Campus Navigation
-                </span>
-
-            </a>
+            <a href="{{ route('instructor.campus-navigation') }}"
+   @click="open = false"
+   class="flex items-center gap-3 px-4 py-3 rounded-xl transition
+          {{ request()->routeIs('instructor.campus-navigation')
+              ? 'bg-[#0E4C6B] shadow-lg'
+              : 'hover:bg-[#163A74]' }}">
+    <x-heroicon-o-map class="w-6 h-6"/>
+    <span>Campus Navigation</span>
+</a>
 
 
             <!-- My Profile -->

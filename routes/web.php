@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use App\Http\Controllers\Admin\CampusMapController;
 
 
 /*
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\URL;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
 
 //Email
 Route::get('/verify-email/{id}/{hash}', function (
@@ -74,12 +76,11 @@ Route::get('/verify-email/{id}/{hash}', function (
 })->name('verification.verify');
 
 
- /*
+/*
 |--------------------------------------------------------------------------
 | Visitor
 |--------------------------------------------------------------------------
 */
-
 
 
 Route::get('/visitor', function () {
@@ -236,148 +237,164 @@ Route::middleware('auth')->group(function () {
         ->name('buildings.export');
 
 
-   /*
-|--------------------------------------------------------------------------
-| Rooms
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Campusmap
+    |--------------------------------------------------------------------------
+    */
 
-/*
-|--------------------------------------------------------------------------
-| Room Import / Export
-|--------------------------------------------------------------------------
-*/
+    Route::get('/campus-map', [CampusMapController::class, 'index'])
+        ->name('admin.campus-map');
 
-Route::get('/admin/rooms/import', [RoomController::class, 'importForm'])
-    ->name('rooms.import');
+    Route::post('/campus-map/positions', [CampusMapController::class, 'savePositions'])
+        ->name('admin.campus-map.positions');
 
-Route::post('/admin/rooms/import', [RoomController::class, 'importRooms'])
-    ->name('rooms.import.store');
-
-Route::get('/admin/rooms/import/preview', [RoomController::class, 'preview'])
-    ->name('rooms.preview');
-
-Route::post('/admin/rooms/import/store', [RoomController::class, 'storeImportedRooms'])
-    ->name('rooms.store.import');
-
-Route::get('/admin/rooms/template', [RoomController::class, 'template'])
-    ->name('rooms.template');
-
-Route::get('/admin/rooms/export', [RoomController::class, 'export'])
-    ->name('rooms.export');
+    Route::post('/campus-map/reset-positions', [CampusMapController::class, 'resetPositions'])
+        ->name('admin.campus-map.reset');
 
 
-/*
-|--------------------------------------------------------------------------
-| Room CRUD
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Room Import / Export
+    |--------------------------------------------------------------------------
+    */
 
-Route::resource('/admin/rooms', RoomController::class);
+    Route::get('/admin/rooms/import', [RoomController::class, 'importForm'])
+        ->name('rooms.import');
 
+    Route::post('/admin/rooms/import', [RoomController::class, 'importRooms'])
+        ->name('rooms.import.store');
 
-/*
-|--------------------------------------------------------------------------
-| Schedules
-|--------------------------------------------------------------------------
-*/
+    Route::get('/admin/rooms/import/preview', [RoomController::class, 'preview'])
+        ->name('rooms.preview');
 
-Route::get(
-    '/admin/schedules',
-    [ScheduleController::class, 'index']
-)->name('admin.schedules');
+    Route::post('/admin/rooms/import/store', [RoomController::class, 'storeImportedRooms'])
+        ->name('rooms.store.import');
 
+    Route::get('/admin/rooms/template', [RoomController::class, 'template'])
+        ->name('rooms.template');
 
-Route::post(
-    '/admin/schedules/import',
-    [ScheduleImportController::class, 'store']
-)->name('admin.schedules.import');
+    Route::get('/admin/rooms/export', [RoomController::class, 'export'])
+        ->name('rooms.export');
 
 
-Route::get(
-    '/admin/schedules/import/preview',
-    [ScheduleImportController::class, 'preview']
-)->name('admin.schedules.preview');
+    /*
+    |--------------------------------------------------------------------------
+    | Room CRUD
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource('/admin/rooms', RoomController::class);
 
 
-Route::post(
-    '/admin/schedules/import/store',
-    [ScheduleImportController::class, 'storeImportedSchedules']
-)->name('admin.schedules.store');
+    /*
+    |--------------------------------------------------------------------------
+    | Schedules
+    |--------------------------------------------------------------------------
+    */
 
-Route::delete(
-    '/admin/schedules/bulk-delete',
-    [ScheduleController::class, 'bulkDelete']
-)->name('admin.schedules.bulk-delete');
-
-Route::delete(
-    '/admin/schedules/{schedule}',
-    [ScheduleController::class, 'destroy']
-)->name('admin.schedules.destroy');
+    Route::get(
+        '/admin/schedules',
+        [ScheduleController::class, 'index']
+    )->name('admin.schedules');
 
 
-Route::post(
-    '/admin/schedules/import/cancel',
-    [ScheduleImportController::class, 'cancel']
-)->name('admin.schedules.cancel');
+    Route::post(
+        '/admin/schedules/import',
+        [ScheduleImportController::class, 'store']
+    )->name('admin.schedules.import');
 
 
-/*
-|--------------------------------------------------------------------------
-| Reports
-|--------------------------------------------------------------------------
-*/
+    Route::get(
+        '/admin/schedules/import/preview',
+        [ScheduleImportController::class, 'preview']
+    )->name('admin.schedules.preview');
 
-Route::get(
-    '/admin/reports',
-    [ReportController::class, 'index']
-)->name('admin.reports');
 
-   /*
-|--------------------------------------------------------------------------
-| Student
-|--------------------------------------------------------------------------
-*/
+    Route::post(
+        '/admin/schedules/import/store',
+        [ScheduleImportController::class, 'storeImportedSchedules']
+    )->name('admin.schedules.store');
 
-Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])
-    ->name('student.dashboard');
+    Route::delete(
+        '/admin/schedules/bulk-delete',
+        [ScheduleController::class, 'bulkDelete']
+    )->name('admin.schedules.bulk-delete');
 
-Route::get('/student/rooms', [StudentDashboardController::class, 'rooms'])
-    ->name('student.rooms');
+    Route::delete(
+        '/admin/schedules/{schedule}',
+        [ScheduleController::class, 'destroy']
+    )->name('admin.schedules.destroy');
 
-Route::get('/student/rooms/{building}', [StudentDashboardController::class, 'buildingRooms'])
-    ->name('student.rooms.building');
 
-Route::get('/student/room/{room}', [StudentDashboardController::class, 'roomDetails'])
-    ->name('student.rooms.show');
+    Route::post(
+        '/admin/schedules/import/cancel',
+        [ScheduleImportController::class, 'cancel']
+    )->name('admin.schedules.cancel');
 
-Route::get('/student/profile', function () {
-    return view('student.profile');
-})->name('student.profile');
 
-Route::post('/student/profile/password', function (\Illuminate\Http\Request $request) {
+    /*
+    |--------------------------------------------------------------------------
+    | Reports
+    |--------------------------------------------------------------------------
+    */
 
-    $request->validate([
-        'current_password' => ['required', 'current_password:web'],
-        'password' => ['required', 'min:8', 'confirmed'],
-    ], [
-        'current_password.current_password' => 'Your current password is incorrect.',
-        'password.confirmed' => 'The new passwords do not match.',
-        'password.min' => 'The new password must be at least 8 characters.',
-    ]);
+    Route::get(
+        '/admin/reports',
+        [ReportController::class, 'index']
+    )->name('admin.reports');
 
-    auth()->user()->update([
-        'password' => \Illuminate\Support\Facades\Hash::make(
-            $request->password
-        ),
-    ]);
 
-    return back()->with(
-        'password_success',
-        'Your password has been changed successfully.'
-    );
+    /*
+    |--------------------------------------------------------------------------
+    | Student
+    |--------------------------------------------------------------------------
+    */
 
-})->name('student.profile.password');
+    Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])
+        ->name('student.dashboard');
+
+    Route::get('/student/rooms', [StudentDashboardController::class, 'rooms'])
+        ->name('student.rooms');
+
+    Route::get('/student/rooms/{building}', [StudentDashboardController::class, 'buildingRooms'])
+        ->name('student.rooms.building');
+
+    Route::get('/student/room/{room}', [StudentDashboardController::class, 'roomDetails'])
+        ->name('student.rooms.show');
+
+    Route::get('/student/campus-navigation', function () {
+        return view('visitor.dashboard');
+    })->name('student.campus-navigation');
+
+    Route::get('/student/profile', function () {
+        return view('student.profile');
+    })->name('student.profile');
+
+    Route::post('/student/profile/password', function (\Illuminate\Http\Request $request) {
+
+        $request->validate([
+            'current_password' => ['required', 'current_password:web'],
+            'password' => ['required', 'min:8', 'confirmed'],
+        ], [
+            'current_password.current_password' => 'Your current password is incorrect.',
+            'password.confirmed' => 'The new passwords do not match.',
+            'password.min' => 'The new password must be at least 8 characters.',
+        ]);
+
+        auth()->user()->update([
+            'password' => \Illuminate\Support\Facades\Hash::make(
+                $request->password
+            ),
+        ]);
+
+        return back()->with(
+            'password_success',
+            'Your password has been changed successfully.'
+        );
+
+    })->name('student.profile.password');
+
 
     /*
     |--------------------------------------------------------------------------
@@ -403,14 +420,18 @@ Route::post('/student/profile/password', function (\Illuminate\Http\Request $req
     Route::patch('/instructor/schedule/{schedule}/start', [InstructorDashboardController::class, 'startClass'])
         ->name('instructor.schedule.start');
 
-        Route::patch(
-    '/instructor/schedule/{schedule}/end',
-    [InstructorDashboardController::class, 'endClass']
-)->name('instructor.schedule.end');
+    Route::patch(
+        '/instructor/schedule/{schedule}/end',
+        [InstructorDashboardController::class, 'endClass']
+    )->name('instructor.schedule.end');
 
-Route::get('/instructor/profile', function () {
-    return view('instructor.profile');
-})->name('instructor.profile');
+    Route::get('/instructor/campus-navigation', function () {
+        return view('visitor.dashboard');
+    })->name('instructor.campus-navigation');
+
+    Route::get('/instructor/profile', function () {
+        return view('instructor.profile');
+    })->name('instructor.profile');
 
 
     /*

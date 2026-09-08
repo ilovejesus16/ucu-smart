@@ -10,6 +10,8 @@ class Building extends Model
         'building_code',
         'building_name',
         'image',
+        'map_x',
+        'map_y',
     ];
 
     public function rooms()
