@@ -24,7 +24,7 @@
                 <img
                     id="viewBuildingImage"
                     src=""
-                    class="w-32 h-32 rounded-2xl object-cover border border-slate-200 hidden">
+                        >
 
                 <div
                     id="viewBuildingPlaceholder"

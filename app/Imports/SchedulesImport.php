@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Room;
 use App\Models\User;
+use App\Models\Schedule;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -26,7 +27,7 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
             /*
             |--------------------------------------------------------------------------
-            | Skip completely empty rows
+            | Skip Completely Empty Rows
             |--------------------------------------------------------------------------
             */
 
@@ -42,23 +43,37 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
             /*
             |--------------------------------------------------------------------------
-            | Read Excel values
+            | Read Excel Values
             |--------------------------------------------------------------------------
             */
 
-            $employeeId = trim((string) ($row['employee_id'] ?? ''));
+            $employeeId = trim(
+                (string) ($row['employee_id'] ?? '')
+            );
 
-            $subjectCode = trim((string) ($row['subject_code'] ?? ''));
+            $subjectCode = trim(
+                (string) ($row['subject_code'] ?? '')
+            );
 
-            $subjectName = trim((string) ($row['subject_name'] ?? ''));
+            $subjectName = trim(
+                (string) ($row['subject_name'] ?? '')
+            );
 
-            $roomValue = trim((string) ($row['room'] ?? ''));
+            $roomValue = trim(
+                (string) ($row['room'] ?? '')
+            );
 
-            $day = trim((string) ($row['day'] ?? ''));
+            $day = trim(
+                (string) ($row['day'] ?? '')
+            );
 
-            $semester = trim((string) ($row['semester'] ?? ''));
+            $semester = trim(
+                (string) ($row['semester'] ?? '')
+            );
 
-            $schoolYear = trim((string) ($row['school_year'] ?? ''));
+            $schoolYear = trim(
+                (string) ($row['school_year'] ?? '')
+            );
 
 
             /*
@@ -129,8 +144,14 @@ class SchedulesImport implements ToCollection, WithHeadingRow
                 'employee_id',
                 $employeeId
             )
-                ->where('role', 'instructor')
-                ->where('status', 'active')
+                ->where(
+                    'role',
+                    'instructor'
+                )
+                ->where(
+                    'status',
+                    'active'
+                )
                 ->first();
 
 
@@ -174,7 +195,8 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
                     'status' => 'invalid',
 
-                    'remarks' => 'Instructor not found or inactive.',
+                    'remarks' =>
+                        'Instructor not found or inactive.',
 
                 ];
 
@@ -184,20 +206,31 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
             /*
             |--------------------------------------------------------------------------
-            | Extract Room Number
+            | Normalize Room Number
             |--------------------------------------------------------------------------
             |
-            | Example:
+            | The Rooms table stores room_number as:
             |
-            | "Room 401" → "401"
-            | "RW 401"   → "401"
-            | "401"      → "401"
+            | LA I - 101
+            | LA I - 102
+            | LA II - 108
+            | RW - 305
+            | TEC - 401
+            |
+            | But the schedule Excel may contain:
+            |
+            | LA I 102
+            | LA I 104
+            | LA II 108
+            | RW 401
+            | TEC 302
+            |
+            | Therefore we normalize the Excel value to the same format
+            | used by RoomsImport.
             |
             */
 
-            $roomNumber = preg_replace(
-                '/\D+/',
-                '',
+            $normalizedRoom = $this->normalizeRoomNumber(
                 $roomValue
             );
 
@@ -208,9 +241,11 @@ class SchedulesImport implements ToCollection, WithHeadingRow
             |--------------------------------------------------------------------------
             */
 
-            $room = Room::where(
-                'room_number',
-                $roomNumber
+            $room = Room::whereRaw(
+                'LOWER(TRIM(room_number)) = ?',
+                [
+                    strtolower($normalizedRoom)
+                ]
             )->first();
 
 
@@ -242,7 +277,7 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
                     'room_name' => null,
 
-                    'room_number' => $roomNumber,
+                    'room_number' => $normalizedRoom,
 
                     'day' => $day,
 
@@ -256,7 +291,9 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
                     'status' => 'invalid',
 
-                    'remarks' => 'Room not found.',
+                    'remarks' =>
+                        'Room not found: ' .
+                        $normalizedRoom,
 
                 ];
 
@@ -382,7 +419,7 @@ class SchedulesImport implements ToCollection, WithHeadingRow
             |--------------------------------------------------------------------------
             */
 
-            $duplicate = \App\Models\Schedule::where(
+            $duplicate = Schedule::where(
                 'room_id',
                 $room->id
             )
@@ -460,11 +497,132 @@ class SchedulesImport implements ToCollection, WithHeadingRow
     }
 
 
-    /**
-     * Convert Excel / text time to H:i:s.
-     */
-    private function convertTime($value): string
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | Normalize Room Number
+    |--------------------------------------------------------------------------
+    |
+    | Examples:
+    |
+    | LA I 102       -> LA I - 102
+    | LA I - 102     -> LA I - 102
+    | LA II 211      -> LA II - 211
+    | RW 401         -> RW - 401
+    | TEC 302        -> TEC - 302
+    |
+    |--------------------------------------------------------------------------
+    */
+
+    private function normalizeRoomNumber(
+        string $value
+    ): string {
+
+        $value = trim($value);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize whitespace
+        |--------------------------------------------------------------------------
+        */
+
+        $value = preg_replace(
+            '/\s+/u',
+            ' ',
+            $value
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize dash characters
+        |--------------------------------------------------------------------------
+        */
+
+        $value = str_replace(
+            ['—', '–'],
+            '-',
+            $value
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize spaces around dash
+        |--------------------------------------------------------------------------
+        */
+
+        $value = preg_replace(
+            '/\s*-\s*/',
+            ' - ',
+            $value
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Already in correct format
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            preg_match(
+                '/^(.+?)\s*-\s*(\d+)$/',
+                $value,
+                $matches
+            )
+        ) {
+
+            return trim($matches[1])
+                . ' - '
+                . trim($matches[2]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Excel format without dash
+        |--------------------------------------------------------------------------
+        |
+        | Example:
+        |
+        | LA I 102
+        |
+        */
+
+        if (
+            preg_match(
+                '/^(.+?)\s+(\d+)$/',
+                $value,
+                $matches
+            )
+        ) {
+
+            return trim($matches[1])
+                . ' - '
+                . trim($matches[2]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return Original Value
+        |--------------------------------------------------------------------------
+        */
+
+        return trim($value);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Convert Excel / Text Time
+    |--------------------------------------------------------------------------
+    */
+
+    private function convertTime(
+        $value
+    ): string {
+
         /*
         |--------------------------------------------------------------------------
         | Excel Numeric Time
@@ -474,7 +632,9 @@ class SchedulesImport implements ToCollection, WithHeadingRow
         if (is_numeric($value)) {
 
             return Carbon::instance(
-                Date::excelToDateTimeObject($value)
+                Date::excelToDateTimeObject(
+                    $value
+                )
             )->format('H:i:s');
         }
 
@@ -485,7 +645,9 @@ class SchedulesImport implements ToCollection, WithHeadingRow
         |--------------------------------------------------------------------------
         */
 
-        $value = trim((string) $value);
+        $value = trim(
+            (string) $value
+        );
 
 
         if ($value === '') {
@@ -498,7 +660,7 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
         /*
         |--------------------------------------------------------------------------
-        | Try Common Time Formats
+        | Common Time Formats
         |--------------------------------------------------------------------------
         */
 
@@ -544,8 +706,9 @@ class SchedulesImport implements ToCollection, WithHeadingRow
 
         try {
 
-            return Carbon::parse($value)
-                ->format('H:i:s');
+            return Carbon::parse(
+                $value
+            )->format('H:i:s');
 
         } catch (\Throwable $e) {
 

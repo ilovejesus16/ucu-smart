@@ -134,6 +134,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/admin/users/{user}/reject', [UserController::class, 'reject'])
         ->name('admin.users.reject');
 
+        Route::delete('/admin/users/delete-all', [UserController::class, 'deleteAll'])
+    ->name('admin.users.deleteAll');
+
+Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
+    ->name('admin.users.destroy');
+
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
         ->name('admin.users.destroy');
 
@@ -198,6 +204,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/admin/buildings', [BuildingController::class, 'store'])
         ->name('buildings.store');
+    
+    Route::delete('/admin/buildings/delete-all', [BuildingController::class, 'deleteAll'])
+    ->name('buildings.deleteAll');
 
     Route::get('/admin/buildings/{building}', [BuildingController::class, 'show'])
         ->name('buildings.show');
@@ -277,6 +286,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/rooms/export', [RoomController::class, 'export'])
         ->name('rooms.export');
 
+
+/*
+|--------------------------------------------------------------------------
+| Delete All Rooms
+|--------------------------------------------------------------------------
+*/
+
+Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
+    ->name('rooms.deleteAll');
 
     /*
     |--------------------------------------------------------------------------

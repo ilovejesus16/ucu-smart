@@ -146,338 +146,357 @@ class UserController extends Controller
     }
 
     /**
- * Student Import Page
- */
-public function studentImportForm()
-{
-    return view('admin.users.import-students');
-}
+     * Delete All Users
+     *
+     * Deletes all users except the currently logged-in administrator.
+     */
+    public function deleteAll()
+    {
+        $currentUserId = auth()->id();
 
-/**
- * Instructor Import Page
- */
-public function instructorImportForm()
-{
-    return view('admin.users.import-instructors');
-}
+        $deletedCount = User::where('id', '!=', $currentUserId)->delete();
 
-/**
- * Import Students
- */
-public function importStudents(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls,csv',
-    ]);
+        return redirect()
+            ->route('admin.users')
+            ->with(
+                'success',
+                "{$deletedCount} user(s) have been deleted successfully."
+            );
+    }
 
-    $import = new StudentsImport();
+    /**
+     * Student Import Page
+     */
+    public function studentImportForm()
+    {
+        return view('admin.users.import-students');
+    }
 
-    Excel::import($import, $request->file('file'));
+    /**
+     * Instructor Import Page
+     */
+    public function instructorImportForm()
+    {
+        return view('admin.users.import-instructors');
+    }
 
-    session([
-        'student_import_preview' => $import->students,
-    ]);
+    /**
+     * Import Students
+     */
+    public function importStudents(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
 
-    return redirect()->route('admin.users.student.preview');
-}
-public function studentPreview()
-{
-    $students = session('student_import_preview', []);
+        $import = new StudentsImport();
 
-    $total = count($students);
-    $ready = collect($students)->where('status', 'new')->count();
-    $duplicates = collect($students)->where('status', 'duplicate')->count();
-    $invalid = collect($students)->where('status', 'invalid')->count();
+        Excel::import($import, $request->file('file'));
 
-    return view('admin.users.import.student-preview', compact(
-        'students',
-        'total',
-        'ready',
-        'duplicates',
-        'invalid'
-    ));
-}
+        session([
+            'student_import_preview' => $import->students,
+        ]);
 
-/**
- * Import Instructors
- */
-public function importInstructors(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls,csv',
-    ]);
+        return redirect()->route('admin.users.student.preview');
+    }
 
-    $import = new InstructorsImport();
+    public function studentPreview()
+    {
+        $students = session('student_import_preview', []);
 
-    Excel::import($import, $request->file('file'));
+        $total = count($students);
+        $ready = collect($students)->where('status', 'new')->count();
+        $duplicates = collect($students)->where('status', 'duplicate')->count();
+        $invalid = collect($students)->where('status', 'invalid')->count();
 
-    session([
-        'instructor_import_preview' => $import->instructors,
-    ]);
+        return view('admin.users.import.student-preview', compact(
+            'students',
+            'total',
+            'ready',
+            'duplicates',
+            'invalid'
+        ));
+    }
 
-    return redirect()->route('admin.users.instructor.preview');
-}
+    /**
+     * Import Instructors
+     */
+    public function importInstructors(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
+
+        $import = new InstructorsImport();
+
+        Excel::import($import, $request->file('file'));
+
+        session([
+            'instructor_import_preview' => $import->instructors,
+        ]);
+
+        return redirect()->route('admin.users.instructor.preview');
+    }
 
 
-public function instructorPreview()
-{
-    $instructors = session('instructor_import_preview', []);
+    public function instructorPreview()
+    {
+        $instructors = session('instructor_import_preview', []);
 
-    $total = count($instructors);
-    $ready = collect($instructors)->where('status', 'new')->count();
-    $duplicates = collect($instructors)->where('status', 'duplicate')->count();
-    $invalid = collect($instructors)->where('status', 'invalid')->count();
+        $total = count($instructors);
+        $ready = collect($instructors)->where('status', 'new')->count();
+        $duplicates = collect($instructors)->where('status', 'duplicate')->count();
+        $invalid = collect($instructors)->where('status', 'invalid')->count();
 
-    return view('admin.users.import.instructor-preview', compact(
-        'instructors',
-        'total',
-        'ready',
-        'duplicates',
-        'invalid'
-    ));
-}
+        return view('admin.users.import.instructor-preview', compact(
+            'instructors',
+            'total',
+            'ready',
+            'duplicates',
+            'invalid'
+        ));
+    }
 
-public function storeImportedInstructors()
-{
-    $instructors = session('instructor_import_preview', []);
+    public function storeImportedInstructors()
+    {
+        $instructors = session('instructor_import_preview', []);
 
-    foreach ($instructors as $instructor) {
+        foreach ($instructors as $instructor) {
 
-        if ($instructor['status'] !== 'new') {
-            continue;
+            if ($instructor['status'] !== 'new') {
+                continue;
+            }
+
+            User::create([
+                'employee_id' => $instructor['employee_id'],
+                'username' => $instructor['employee_id'],
+                'first_name' => $instructor['first_name'],
+                'last_name' => $instructor['last_name'],
+                'department' => $instructor['department'],
+                'email' => $instructor['email'],
+                'role' => 'instructor',
+                'status' => 'active',
+                'email_verified_at' => now(),
+                'password' => Hash::make($instructor['employee_id']),
+            ]);
+        }
+
+        session()->forget('instructor_import_preview');
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'Instructors imported successfully.');
+    }
+
+    /**
+     * Export Users
+     */
+    public function export()
+    {
+        return Excel::download(
+            new UsersExport,
+            'users.xlsx'
+        );
+    }
+
+    public function studentTemplate()
+    {
+        $headers = [
+
+            "Student ID",
+            "First Name",
+            "Last Name",
+            "Course",
+            "Email"
+
+        ];
+
+        $callback = function () use ($headers) {
+
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, $headers);
+
+            fclose($file);
+
+        };
+
+        return Response::stream(
+            $callback,
+            200,
+            [
+                "Content-Type" => "text/csv",
+                "Content-Disposition" => "attachment; filename=student_template.csv",
+            ]
+        );
+    }
+
+    public function instructorTemplate()
+    {
+        $headers = [
+
+            "Employee ID",
+            "First Name",
+            "Last Name",
+            "Department",
+            "Email"
+
+        ];
+
+        $callback = function () use ($headers) {
+
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, $headers);
+
+            fclose($file);
+
+        };
+
+        return Response::stream(
+            $callback,
+            200,
+            [
+                "Content-Type" => "text/csv",
+                "Content-Disposition" => "attachment; filename=instructor_template.csv",
+            ]
+        );
+    }
+
+    public function storeImportedStudents()
+    {
+        $students = session('student_import_preview', []);
+
+        foreach ($students as $student) {
+
+            if ($student['status'] !== 'new') {
+                continue;
+            }
+
+            User::create([
+                'student_id' => $student['student_id'],
+                'username' => $student['student_id'],
+                'first_name' => $student['first_name'],
+                'last_name' => $student['last_name'],
+                'course' => $student['course'],
+                'email' => $student['email'],
+                'role' => 'student',
+                'status' => 'active',
+                'email_verified_at' => now(),
+                'password' => Hash::make($student['student_id']),
+            ]);
+        }
+
+        session()->forget('student_import_preview');
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'Students imported successfully.');
+    }
+
+    public function show(User $user)
+    {
+        return response()->json($user);
+    }
+
+    public function edit(User $user)
+    {
+        return response()->json($user);
+    }
+
+
+    public function update(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'required|string|max:255',
+            'email'      => 'required|email|max:255|unique:users,email,' . $user->id,
+            'status'     => 'required|in:active,pending,rejected',
+            'department' => 'nullable|string|max:255',
+        ]);
+
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
+        $user->email = $validated['email'];
+        $user->status = $validated['status'];
+
+        // Store in the correct field depending on the user's role
+        if ($user->role === 'student') {
+            $user->course = $validated['department'];
+        } else {
+            $user->department = $validated['department'];
+        }
+
+        $user->save();
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'User updated successfully.');
+    }
+
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'role' => 'required|in:student,instructor,admin',
+            'status' => 'required|in:active,pending,rejected',
+
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+
+            'email' => 'required|email|unique:users,email',
+
+            'student_id' => 'nullable|unique:users,student_id',
+            'employee_id' => 'nullable|unique:users,employee_id',
+
+            'username' => 'required_if:role,admin|nullable|unique:users,username',
+
+            'course' => 'nullable|string|max:255',
+            'department' => 'nullable|string|max:255',
+
+            'password' => 'required|min:8',
+        ]);
+
+        // Determine username
+        if ($request->role === 'student') {
+
+            $username = $request->student_id;
+
+        } elseif ($request->role === 'instructor') {
+
+            $username = $request->employee_id;
+
+        } else {
+
+            $username = $request->username;
+
         }
 
         User::create([
-            'employee_id' => $instructor['employee_id'],
-            'username' => $instructor['employee_id'],
-            'first_name' => $instructor['first_name'],
-            'last_name' => $instructor['last_name'],
-            'department' => $instructor['department'],
-            'email' => $instructor['email'],
-            'role' => 'instructor',
-            'status' => 'active',
+
+            'role' => $request->role,
+            'status' => $request->status,
+
+            'username' => $username,
+
+            'student_id' => $request->student_id,
+            'employee_id' => $request->employee_id,
+
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+
+            'course' => $request->course,
+            'department' => $request->department,
+
+            'email' => $request->email,
             'email_verified_at' => now(),
-            'password' => Hash::make($instructor['employee_id']),
+
+            'password' => Hash::make($request->password),
+
         ]);
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'User added successfully.');
     }
-
-    session()->forget('instructor_import_preview');
-
-    return redirect()
-        ->route('admin.users')
-        ->with('success', 'Instructors imported successfully.');
-}
-/**
- * Export Users
- */
-public function export()
-{
-    return Excel::download(
-        new UsersExport,
-        'users.xlsx'
-    );
-}
-
-public function studentTemplate()
-{
-    $headers = [
-
-        "Student ID",
-        "First Name",
-        "Last Name",
-        "Course",
-        "Email"
-
-    ];
-
-    $callback = function () use ($headers) {
-
-        $file = fopen('php://output', 'w');
-
-        fputcsv($file, $headers);
-
-        fclose($file);
-
-    };
-
-    return Response::stream(
-        $callback,
-        200,
-        [
-            "Content-Type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=student_template.csv",
-        ]
-    );
-}
-
-public function instructorTemplate()
-{
-    $headers = [
-
-        "Employee ID",
-        "First Name",
-        "Last Name",
-        "Department",
-        "Email"
-
-    ];
-
-    $callback = function () use ($headers) {
-
-        $file = fopen('php://output', 'w');
-
-        fputcsv($file, $headers);
-
-        fclose($file);
-
-    };
-
-    return Response::stream(
-        $callback,
-        200,
-        [
-            "Content-Type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=instructor_template.csv",
-        ]
-    );
-}
-
-public function storeImportedStudents()
-{
-    $students = session('student_import_preview', []);
-
-    foreach ($students as $student) {
-
-        if ($student['status'] !== 'new') {
-            continue;
-        }
-
-        User::create([
-            'student_id' => $student['student_id'],
-            'username' => $student['student_id'], 
-            'first_name' => $student['first_name'],
-            'last_name' => $student['last_name'],
-            'course' => $student['course'],
-            'email' => $student['email'],
-            'role' => 'student',
-            'status' => 'active',
-            'email_verified_at' => now(),
-            'password' => Hash::make($student['student_id']),
-        ]);
-    }
-
-    session()->forget('student_import_preview');
-
-    return redirect()
-        ->route('admin.users')
-        ->with('success', 'Students imported successfully.');
-}
-
-public function show(User $user)
-{
-    return response()->json($user);
-}
-
-public function edit(User $user)
-{
-    return response()->json($user);
-}
-
-
-public function update(Request $request, User $user)
-{
-    $validated = $request->validate([
-        'first_name' => 'required|string|max:255',
-        'last_name'  => 'required|string|max:255',
-        'email'      => 'required|email|max:255|unique:users,email,' . $user->id,
-        'status'     => 'required|in:active,pending,rejected',
-        'department' => 'nullable|string|max:255',
-    ]);
-
-    $user->first_name = $validated['first_name'];
-    $user->last_name = $validated['last_name'];
-    $user->email = $validated['email'];
-    $user->status = $validated['status'];
-
-    // Store in the correct field depending on the user's role
-    if ($user->role === 'student') {
-        $user->course = $validated['department'];
-    } else {
-        $user->department = $validated['department'];
-    }
-
-    $user->save();
-
-return redirect()
-    ->route('admin.users')
-    ->with('success', 'User updated successfully.');
-}
-
-
-
-
-public function store(Request $request)
-{
-    $request->validate([
-        'role' => 'required|in:student,instructor,admin',
-        'status' => 'required|in:active,pending,rejected',
-
-        'first_name' => 'required|string|max:255',
-        'last_name' => 'required|string|max:255',
-
-        'email' => 'required|email|unique:users,email',
-
-        'student_id' => 'nullable|unique:users,student_id',
-        'employee_id' => 'nullable|unique:users,employee_id',
-
-        'username' => 'required_if:role,admin|nullable|unique:users,username',
-
-        'course' => 'nullable|string|max:255',
-        'department' => 'nullable|string|max:255',
-
-        'password' => 'required|min:8',
-    ]);
-
-    // Determine username
-    if ($request->role === 'student') {
-
-        $username = $request->student_id;
-
-    } elseif ($request->role === 'instructor') {
-
-        $username = $request->employee_id;
-
-    } else {
-
-        $username = $request->username;
-
-    }
-
-    User::create([
-
-        'role' => $request->role,
-        'status' => $request->status,
-
-        'username' => $username,
-
-        'student_id' => $request->student_id,
-        'employee_id' => $request->employee_id,
-
-        'first_name' => $request->first_name,
-        'last_name' => $request->last_name,
-
-        'course' => $request->course,
-        'department' => $request->department,
-
-        'email' => $request->email,
-        'email_verified_at' => now(),
-
-        'password' => Hash::make($request->password),
-
-    ]);
-
-    return redirect()
-        ->route('admin.users')
-        ->with('success', 'User added successfully.');
-}
 }

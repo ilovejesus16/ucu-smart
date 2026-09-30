@@ -161,6 +161,31 @@ class BuildingController extends Controller
     }
 
     /**
+     * Delete All Buildings
+     */
+    public function deleteAll()
+    {
+        $buildings = Building::all();
+
+        foreach ($buildings as $building) {
+
+            if ($building->image) {
+                Storage::disk('public')
+                    ->delete($building->image);
+            }
+
+            $building->delete();
+        }
+
+        return redirect()
+            ->route('buildings.index')
+            ->with(
+                'success',
+                'All buildings deleted successfully.'
+            );
+    }
+
+    /**
      * Building Import Form
      */
     public function importForm()

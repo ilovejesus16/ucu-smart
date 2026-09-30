@@ -140,7 +140,7 @@
         <!-- Visitor -->
 
         <a
-                href="{{ route('visitor.dashboard') }}"
+            href="{{ route('visitor.dashboard') }}"
             class="block w-full text-center border-2 border-[#0E4C6B] text-[#0E4C6B] font-semibold py-3 rounded-xl hover:bg-[#0E4C6B] hover:text-white transition">
 
             Continue as Visitor

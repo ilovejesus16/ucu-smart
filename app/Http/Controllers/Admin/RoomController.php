@@ -23,20 +23,18 @@ class RoomController extends Controller
         $query = Room::with('building');
 
         // Search
-
         if ($request->filled('search')) {
 
             $query->where(function ($q) use ($request) {
 
                 $q->where('room_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('room_number', 'like', '%' . $request->search . '%');
+                    ->orWhere('room_number', 'like', '%' . $request->search . '%');
 
             });
 
         }
 
         // Building Filter
-
         if ($request->filled('building')) {
 
             $query->where('building_id', $request->building);
@@ -44,7 +42,6 @@ class RoomController extends Controller
         }
 
         // Floor Filter
-
         if ($request->filled('floor')) {
 
             $query->where('floor', $request->floor);
@@ -147,162 +144,177 @@ class RoomController extends Controller
     }
 
     /**
- * Import Page
- */
-public function importForm()
-{
-    return view('admin.rooms.import');
-}
+     * Delete All Rooms
+     */
+    public function deleteAll()
+    {
+        Room::query()->delete();
 
-/**
- * Import Rooms
- */
-public function importRooms(Request $request)
-{
-    $request->validate([
-    'file' => 'required|file|extensions:xlsx,xls,csv|max:10240',
-]);
-
-    $import = new RoomsImport();
-
-    Excel::import($import, $request->file('file'));
-
-    session([
-        'room_import_preview' => $import->rooms,
-    ]);
-
-    return redirect()->route('rooms.preview');
-}
-
-/**
- * Preview
- */
-public function preview()
-{
-    $rooms = session('room_import_preview', []);
-
-    $total = count($rooms);
-
-    $ready = collect($rooms)
-        ->where('status', 'new')
-        ->count();
-
-    $duplicates = collect($rooms)
-        ->where('status', 'duplicate')
-        ->count();
-
-    $invalid = collect($rooms)
-        ->where('status', 'invalid')
-        ->count();
-
-    return view(
-    'admin.rooms.partials.import-preview',
-    compact(
-        'rooms',
-        'total',
-        'ready',
-        'duplicates',
-        'invalid'
-    )
-);
-}
-
-/**
- * Save Imported Rooms
- */
-public function storeImportedRooms()
-{
-    $rooms = session('room_import_preview', []);
-
-    foreach ($rooms as $room) {
-
-        if ($room['status'] !== 'new') {
-            continue;
-        }
-
-        Room::create([
-
-            'building_id' => $room['building_id'],
-
-            'room_number' => $room['room_number'],
-
-            'room_name' => $room['room_name'],
-
-            'capacity' => $room['capacity'],
-
-            'floor' => $room['floor'],
-
-        ]);
+        return redirect()
+            ->route('rooms.index')
+            ->with(
+                'success',
+                'All rooms deleted successfully.'
+            );
     }
 
-    session()->forget('room_import_preview');
+    /**
+     * Import Page
+     */
+    public function importForm()
+    {
+        return view('admin.rooms.import');
+    }
 
-    return redirect()
-        ->route('rooms.index')
-        ->with(
-            'success',
-            'Rooms imported successfully.'
+    /**
+     * Import Rooms
+     */
+    public function importRooms(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|extensions:xlsx,xls,csv|max:10240',
+        ]);
+
+        $import = new RoomsImport();
+
+        Excel::import($import, $request->file('file'));
+
+        session([
+            'room_import_preview' => $import->rooms,
+        ]);
+
+        return redirect()->route('rooms.preview');
+    }
+
+    /**
+     * Preview
+     */
+    public function preview()
+    {
+        $rooms = session('room_import_preview', []);
+
+        $total = count($rooms);
+
+        $ready = collect($rooms)
+            ->where('status', 'new')
+            ->count();
+
+        $duplicates = collect($rooms)
+            ->where('status', 'duplicate')
+            ->count();
+
+        $invalid = collect($rooms)
+            ->where('status', 'invalid')
+            ->count();
+
+        return view(
+            'admin.rooms.partials.import-preview',
+            compact(
+                'rooms',
+                'total',
+                'ready',
+                'duplicates',
+                'invalid'
+            )
         );
-}
+    }
 
-/**
- * Download Template
- */
-public function template()
-{
-    $headers = [
+    /**
+     * Save Imported Rooms
+     */
+    public function storeImportedRooms()
+    {
+        $rooms = session('room_import_preview', []);
 
-        "Building Name",
+        foreach ($rooms as $room) {
 
-        "Room Number",
+            if ($room['status'] !== 'new') {
+                continue;
+            }
 
-        "Room Name",
+            Room::create([
 
-        "Capacity",
+                'building_id' => $room['building_id'],
 
-        "Floor"
+                'room_number' => $room['room_number'],
 
-    ];
+                'room_name' => $room['room_name'],
 
-    $callback = function () use ($headers) {
+                'capacity' => $room['capacity'],
 
-        $file = fopen('php://output', 'w');
+                'floor' => $room['floor'],
 
-        fputcsv($file, $headers);
+            ]);
+        }
 
-        fclose($file);
+        session()->forget('room_import_preview');
 
-    };
+        return redirect()
+            ->route('rooms.index')
+            ->with(
+                'success',
+                'Rooms imported successfully.'
+            );
+    }
 
-    return Response::stream(
+    /**
+     * Download Template
+     */
+    public function template()
+    {
+        $headers = [
 
-        $callback,
+            "Building Name",
 
-        200,
+            "Room Number",
 
-        [
+            "Room Name",
 
-            "Content-Type" => "text/csv",
+            "Capacity",
 
-            "Content-Disposition" =>
-                "attachment; filename=room_template.csv",
+            "Floor"
 
-        ]
+        ];
 
-    );
-}
+        $callback = function () use ($headers) {
 
-/**
- * Export Rooms
- */
-public function export()
-{
-    return Excel::download(
+            $file = fopen('php://output', 'w');
 
-        new RoomsExport,
+            fputcsv($file, $headers);
 
-        'rooms.xlsx'
+            fclose($file);
 
-    );
-}
+        };
+
+        return Response::stream(
+
+            $callback,
+
+            200,
+
+            [
+
+                "Content-Type" => "text/csv",
+
+                "Content-Disposition" =>
+                    "attachment; filename=room_template.csv",
+
+            ]
+
+        );
+    }
+
+    /**
+     * Export Rooms
+     */
+    public function export()
+    {
+        return Excel::download(
+
+            new RoomsExport,
+
+            'rooms.xlsx'
+
+        );
+    }
 }
