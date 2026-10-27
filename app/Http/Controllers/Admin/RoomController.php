@@ -12,6 +12,7 @@ use App\Imports\RoomsImport;
 use App\Exports\RoomsExport;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\ActivityLog;
 
 class RoomController extends Controller
 {
@@ -71,17 +72,23 @@ class RoomController extends Controller
     }
 
     /**
-     * Store Room
-     */
-    public function store(StoreRoomRequest $request)
-    {
-        Room::create($request->validated());
+ * Store Room
+ */
+public function store(StoreRoomRequest $request)
+{
+    $room = Room::create($request->validated());
 
-        return back()->with(
-            'success',
-            'Room added successfully.'
-        );
-    }
+    $this->logActivity(
+        'Created',
+        'Rooms',
+        "Added room: {$room->room_number} to building ID {$room->building_id}"
+    );
+
+    return back()->with(
+        'success',
+        'Room added successfully.'
+    );
+}
 
     /**
      * View Room (AJAX)
@@ -317,4 +324,22 @@ class RoomController extends Controller
 
         );
     }
+
+    private function logActivity(
+    string $action,
+    string $module,
+    string $description
+): void {
+    $user = auth()->user();
+
+    ActivityLog::create([
+        'user_id' => $user?->id,
+        'user_name' => $user
+            ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+            : 'Unknown User',
+        'action' => $action,
+        'module' => $module,
+        'description' => $description,
+    ]);
+}
 }

@@ -502,7 +502,7 @@
                     </div>
 
                 @endforeach
-
+            
             </div>
 
         </div>

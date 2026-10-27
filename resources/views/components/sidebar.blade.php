@@ -323,9 +323,27 @@
 
             </a>
 
-            <!-- ================================================= -->
-<!-- CAMPUS MAP EDITOR -->
-<!-- ================================================= -->
+<!-- Campus Navigation -->
+
+<a
+    href="{{ route('admin.campus-map') }}"
+    @click="open = false"
+    class="flex items-center gap-3
+           px-4 py-3
+           rounded-xl
+           transition
+           {{ request()->routeIs('admin.campus-map*')
+                ? 'bg-[#0E4C6B] shadow-lg'
+                : 'hover:bg-[#163A74]' }}">
+
+    <x-heroicon-o-map
+        class="w-6 h-6 flex-shrink-0"/>
+
+    <span>
+        Campus Navigation
+    </span>
+
+</a>
 
 
 <!-- Reports -->

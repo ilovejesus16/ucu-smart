@@ -260,6 +260,26 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
 
     Route::post('/campus-map/reset-positions', [CampusMapController::class, 'resetPositions'])
         ->name('admin.campus-map.reset');
+    
+    Route::post(
+    '/campus-map/locations/{location}/remove-position',
+    [\App\Http\Controllers\Admin\CampusMapController::class, 'removePosition']
+)->name('admin.campus-map.remove-position');
+
+Route::patch(
+    '/campus-map/buildings/{building}',
+    [CampusMapController::class, 'updateBuilding']
+)->name('admin.campus-map.buildings.update');
+
+Route::patch(
+    '/campus-map/locations/{location}/link-building',
+    [CampusMapController::class, 'linkBuilding']
+)->name('admin.campus-map.locations.link-building');
+
+Route::patch(
+    '/campus-map/locations/{location}/update',
+    [\App\Http\Controllers\Admin\CampusMapController::class, 'updateLocation']
+)->name('admin.campus-map.locations.update');
 
 
     /*

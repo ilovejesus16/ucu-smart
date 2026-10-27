@@ -144,7 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('editBuildingName').value =
                 building.building_name;
+            const descriptionField = document.getElementById('editBuildingDescription');
 
+if (descriptionField) {
+    descriptionField.value = building.description ?? '';
+}
             const preview = document.getElementById('editBuildingPreview');
             const placeholder = document.getElementById('editBuildingPlaceholder');
 

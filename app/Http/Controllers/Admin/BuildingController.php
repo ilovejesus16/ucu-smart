@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBuildingRequest;
 use App\Http\Requests\UpdateBuildingRequest;
+use App\Models\ActivityLog;
 use App\Models\Building;
 use App\Models\Room;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use App\Imports\BuildingsImport;
 use App\Exports\BuildingsExport;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\CampusLocation;
 
 class BuildingController extends Controller
 {
@@ -45,33 +47,36 @@ class BuildingController extends Controller
         ]);
     }
 
-    /**
-     * Store Building
-     */
-    public function store(StoreBuildingRequest $request)
-    {
-        $data = $request->validated();
+    
+/**
+ * Store Building
+ */
+public function store(StoreBuildingRequest $request)
+{
+    $data = $request->validated();
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')
-                ->store('buildings', 'public');
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Automatically generate Building Code
-        |--------------------------------------------------------------------------
-        */
-
-        $data['building_code'] = $this->generateBuildingCode();
-
-        Building::create($data);
-
-        return back()->with(
-            'success',
-            'Building added successfully.'
-        );
+    if ($request->hasFile('image')) {
+        $data['image'] = $request->file('image')
+            ->store('buildings', 'public');
     }
+
+    $data['building_code'] = $this->generateBuildingCode();
+
+    \Illuminate\Support\Facades\DB::transaction(function () use ($data, &$building) {
+        $building = Building::create($data);
+
+        $this->createCampusLocationForBuilding($building);
+
+        $this->logActivity(
+            'Created',
+            'Buildings',
+            "Added building: {$building->building_name} ({$building->building_code})"
+        );
+    });
+
+    return back()->with('success', 'Building added successfully.');
+}
+
 
     /**
      * View Building (AJAX)
@@ -82,6 +87,7 @@ class BuildingController extends Controller
             'id' => $building->id,
             'building_code' => $building->building_code,
             'building_name' => $building->building_name,
+            'description' => $building->description,
             'image' => $building->image
                 ? asset('storage/' . $building->image)
                 : null,
@@ -100,6 +106,7 @@ class BuildingController extends Controller
             'id' => $building->id,
             'building_code' => $building->building_code,
             'building_name' => $building->building_name,
+            'description' => $building->description,
             'image' => $building->image
                 ? asset('storage/' . $building->image)
                 : null,
@@ -115,19 +122,12 @@ class BuildingController extends Controller
     ) {
         $data = $request->validated();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Keep existing building code
-        |--------------------------------------------------------------------------
-        */
-
+        // Keep existing building code.
         $data['building_code'] = $building->building_code;
 
         if ($request->hasFile('image')) {
-
             if ($building->image) {
-                Storage::disk('public')
-                    ->delete($building->image);
+                Storage::disk('public')->delete($building->image);
             }
 
             $data['image'] = $request->file('image')
@@ -142,48 +142,69 @@ class BuildingController extends Controller
         );
     }
 
-    /**
-     * Delete Building
-     */
-    public function destroy(Building $building)
-    {
+    
+/**
+ * Delete Building
+ */
+public function destroy(Building $building)
+{
+    \Illuminate\Support\Facades\DB::transaction(function () use ($building) {
+        // Remove the linked campus map location first.
+        CampusLocation::where('building_id', $building->id)->delete();
+
+        // Delete the building image if one exists.
         if ($building->image) {
-            Storage::disk('public')
-                ->delete($building->image);
+            Storage::disk('public')->delete($building->image);
         }
 
+        // Delete the building record.
         $building->delete();
 
-        return back()->with(
-            'success',
-            'Building deleted successfully.'
+        $this->logActivity(
+            'Deleted',
+            'Buildings',
+            "Deleted building: {$building->building_name} ({$building->building_code})"
         );
-    }
+    });
 
-    /**
-     * Delete All Buildings
-     */
-    public function deleteAll()
-    {
+    return back()->with(
+        'success',
+        'Building and its campus map marker deleted successfully.'
+    );
+}
+
+
+  
+/**
+ * Delete All Buildings
+ */
+public function deleteAll()
+{
+    \Illuminate\Support\Facades\DB::transaction(function () {
         $buildings = Building::all();
 
         foreach ($buildings as $building) {
+            CampusLocation::where('building_id', $building->id)->delete();
 
             if ($building->image) {
-                Storage::disk('public')
-                    ->delete($building->image);
+                Storage::disk('public')->delete($building->image);
             }
 
             $building->delete();
         }
 
-        return redirect()
-            ->route('buildings.index')
-            ->with(
-                'success',
-                'All buildings deleted successfully.'
-            );
-    }
+        $this->logActivity(
+            'Deleted',
+            'Buildings',
+            'Deleted all buildings and their linked campus map markers.'
+        );
+    });
+
+    return redirect()
+        ->route('buildings.index')
+        ->with('success', 'All buildings and their linked campus map markers deleted successfully.');
+}
+
 
     /**
      * Building Import Form
@@ -204,10 +225,7 @@ class BuildingController extends Controller
 
         $import = new BuildingsImport();
 
-        Excel::import(
-            $import,
-            $request->file('file')
-        );
+        Excel::import($import, $request->file('file'));
 
         session([
             'building_import_preview' => $import->buildings,
@@ -221,10 +239,7 @@ class BuildingController extends Controller
      */
     public function preview()
     {
-        $buildings = session(
-            'building_import_preview',
-            []
-        );
+        $buildings = session('building_import_preview', []);
 
         $total = count($buildings);
 
@@ -242,82 +257,61 @@ class BuildingController extends Controller
 
         return view(
             'admin.buildings.import-preview',
-            compact(
-                'buildings',
-                'total',
-                'ready',
-                'duplicates',
-                'invalid'
-            )
+            compact('buildings', 'total', 'ready', 'duplicates', 'invalid')
         );
     }
 
-    /**
-     * Store Imported Buildings
-     */
-    public function storeImportedBuildings()
-    {
-        $buildings = session(
-            'building_import_preview',
-            []
-        );
+   
+/**
+ * Store Imported Buildings
+ */
+public function storeImportedBuildings()
+{
+    $buildings = session('building_import_preview', []);
 
-        foreach ($buildings as $building) {
-
-            if (($building['status'] ?? null) !== 'new') {
-                continue;
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Use the code from the Excel importer.
-            | If there isn't one, generate one automatically.
-            |--------------------------------------------------------------------------
-            */
-
-            $buildingCode =
-                $building['building_code']
-                ?? $this->generateBuildingCode();
-
-            Building::create([
-                'building_code' => $buildingCode,
-                'building_name' => $building['building_name'],
-            ]);
+    foreach ($buildings as $building) {
+        if (($building['status'] ?? null) !== 'new') {
+            continue;
         }
 
-        session()->forget(
-            'building_import_preview'
-        );
+        $buildingCode = $building['building_code']
+            ?? $this->generateBuildingCode();
 
-        return redirect()
-            ->route('buildings.index')
-            ->with(
-                'success',
-                'Buildings imported successfully.'
-            );
+        $createdBuilding = Building::create([
+            'building_code' => $buildingCode,
+            'building_name' => $building['building_name'],
+            'description' => $building['description'] ?? null,
+        ]);
+        $this->createCampusLocationForBuilding($createdBuilding);
+
+        // Automatically add the building to the campus map.
+        $this->createCampusLocationForBuilding($createdBuilding);
+
+        $this->logActivity(
+            'Created',
+            'Buildings',
+            "Imported building: {$createdBuilding->building_name} ({$createdBuilding->building_code})"
+        );
     }
+
+    session()->forget('building_import_preview');
+
+    return redirect()
+        ->route('buildings.index')
+        ->with('success', 'Buildings imported successfully.');
+}
+
 
     /**
      * Download Building Template
      */
     public function template()
     {
-        $headers = [
-            'Building Name',
-        ];
+        $headers = ['Building Name'];
 
         $callback = function () use ($headers) {
-
-            $file = fopen(
-                'php://output',
-                'w'
-            );
-
-            fputcsv(
-                $file,
-                $headers
-            );
-
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $headers);
             fclose($file);
         };
 
@@ -337,20 +331,42 @@ class BuildingController extends Controller
      */
     public function export()
     {
-        return Excel::download(
-            new BuildingsExport,
-            'buildings.xlsx'
-        );
+        return Excel::download(new BuildingsExport, 'buildings.xlsx');
     }
 
     /**
-     * Generate the next Building Code
-     *
-     * Example:
-     * B01
-     * B02
-     * B03
+     * Generate the next Building Code (B01, B02, B03...)
      */
+    
+/**
+ * Automatically create an unplaced campus map location for a building.
+ */
+private function createCampusLocationForBuilding(Building $building): CampusLocation
+{
+    // Avoid duplicate locations for the same building.
+    $existingLocation = CampusLocation::where(
+        'building_id',
+        $building->id
+    )->first();
+
+    if ($existingLocation) {
+        return $existingLocation;
+    }
+
+    // Assign the next available location number.
+    $nextNumber = ((int) CampusLocation::max('number')) + 1;
+
+    return CampusLocation::create([
+        'number' => $nextNumber,
+        'name' => $building->building_name,
+        'type' => 'Building',
+        'building_id' => $building->id,
+        'map_x' => null,
+        'map_y' => null,
+        'marker_size' => 28,
+    ]);
+}
+
     private function generateBuildingCode(): string
     {
         $lastBuilding = Building::orderByRaw(
@@ -361,10 +377,7 @@ class BuildingController extends Controller
             return 'B01';
         }
 
-        $number = (int) substr(
-            $lastBuilding->building_code,
-            1
-        );
+        $number = (int) substr($lastBuilding->building_code, 1);
 
         return 'B' . str_pad(
             $number + 1,
@@ -372,5 +385,26 @@ class BuildingController extends Controller
             '0',
             STR_PAD_LEFT
         );
+    }
+
+    /**
+     * Record activity in the activity log.
+     */
+    private function logActivity(
+        string $action,
+        string $module,
+        string $description
+    ): void {
+        $user = auth()->user();
+
+        ActivityLog::create([
+            'user_id' => $user?->id,
+            'user_name' => $user
+                ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+                : 'Unknown User',
+            'action' => $action,
+            'module' => $module,
+            'description' => $description,
+        ]);
     }
 }

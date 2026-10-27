@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Building;
 use App\Models\Room;
 use App\Models\RoomUsage;
@@ -23,25 +24,13 @@ class ReportController extends Controller
 
         $totalSchedules = Schedule::count();
 
-        $scheduled = Schedule::where(
-            'status',
-            'scheduled'
-        )->count();
+        $scheduled = Schedule::where('status', 'scheduled')->count();
 
-        $inProgress = Schedule::where(
-            'status',
-            'in_progress'
-        )->count();
+        $inProgress = Schedule::where('status', 'in_progress')->count();
 
-        $completed = Schedule::where(
-            'status',
-            'completed'
-        )->count();
+        $completed = Schedule::where('status', 'completed')->count();
 
-        $cancelled = Schedule::where(
-            'status',
-            'cancelled'
-        )->count();
+        $cancelled = Schedule::where('status', 'cancelled')->count();
 
 
         /*
@@ -54,19 +43,11 @@ class ReportController extends Controller
 
         $totalBuildings = Building::count();
 
-        $totalInstructors = User::where(
-            'role',
-            'instructor'
-        )
-            ->where(
-                'status',
-                'active'
-            )
+        $totalInstructors = User::where('role', 'instructor')
+            ->where('status', 'active')
             ->count();
 
-        $subjectCount = Schedule::select(
-            'subject_code'
-        )
+        $subjectCount = Schedule::select('subject_code')
             ->distinct()
             ->count('subject_code');
 
@@ -163,21 +144,21 @@ class ReportController extends Controller
 
         $roomSort = $request->get('room_sort', 'most');
 
-$roomUsageQuery = RoomUsage::selectRaw(
-    'room_id, COUNT(*) as total_usage, SUM(duration_minutes) as total_minutes'
-)
-    ->with('room.building')
-    ->groupBy('room_id');
+        $roomUsageQuery = RoomUsage::selectRaw(
+            'room_id, COUNT(*) as total_usage, SUM(duration_minutes) as total_minutes'
+        )
+            ->with('room.building')
+            ->groupBy('room_id');
 
-if ($roomSort === 'least') {
-    $roomUsageQuery->orderBy('total_usage', 'asc');
-} else {
-    $roomUsageQuery->orderBy('total_usage', 'desc');
-}
+        if ($roomSort === 'least') {
+            $roomUsageQuery->orderBy('total_usage', 'asc');
+        } else {
+            $roomUsageQuery->orderBy('total_usage', 'desc');
+        }
 
-$roomUsage = $roomUsageQuery
-    ->limit(10)
-    ->get();
+        $roomUsage = $roomUsageQuery
+            ->limit(10)
+            ->get();
 
 
         /*
@@ -186,29 +167,30 @@ $roomUsage = $roomUsageQuery
         |--------------------------------------------------------------------------
         */
 
-     $buildingSort = $request->get('building_sort', 'most');
+        $buildingSort = $request->get('building_sort', 'most');
 
-$buildingUsageQuery = RoomUsage::selectRaw(
-    'rooms.building_id,
-     COUNT(room_usages.id) as total_usage,
-     SUM(room_usages.duration_minutes) as total_minutes'
-)
-    ->join(
-        'rooms',
-        'room_usages.room_id',
-        '=',
-        'rooms.id'
-    )
-    ->with('room.building')
-    ->groupBy('rooms.building_id');
+        $buildingUsageQuery = RoomUsage::selectRaw(
+            'rooms.building_id,
+             COUNT(room_usages.id) as total_usage,
+             SUM(room_usages.duration_minutes) as total_minutes'
+        )
+            ->join(
+                'rooms',
+                'room_usages.room_id',
+                '=',
+                'rooms.id'
+            )
+            ->with('room.building')
+            ->groupBy('rooms.building_id');
 
-if ($buildingSort === 'least') {
-    $buildingUsageQuery->orderBy('total_usage', 'asc');
-} else {
-    $buildingUsageQuery->orderBy('total_usage', 'desc');
-}
+        if ($buildingSort === 'least') {
+            $buildingUsageQuery->orderBy('total_usage', 'asc');
+        } else {
+            $buildingUsageQuery->orderBy('total_usage', 'desc');
+        }
 
-$buildingUsage = $buildingUsageQuery->get();
+        $buildingUsage = $buildingUsageQuery->get();
+
 
         /*
         |--------------------------------------------------------------------------
@@ -298,44 +280,58 @@ $buildingUsage = $buildingUsageQuery->get();
 
         /*
         |--------------------------------------------------------------------------
+        | Activity Logs / Audit Trail
+        |--------------------------------------------------------------------------
+        */
+
+        $activityLogs = ActivityLog::with('user')
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Return Reports View
         |--------------------------------------------------------------------------
         */
 
         return view(
-    'admin.reports.index',
-    compact(
-        'totalSchedules',
-        'scheduled',
-        'inProgress',
-        'completed',
-        'cancelled',
+            'admin.reports.index',
+            compact(
+                'totalSchedules',
+                'scheduled',
+                'inProgress',
+                'completed',
+                'cancelled',
 
-        'totalRooms',
-        'totalBuildings',
-        'totalInstructors',
-        'subjectCount',
+                'totalRooms',
+                'totalBuildings',
+                'totalInstructors',
+                'subjectCount',
 
-        'todayUsage',
-        'weeklyUsage',
-        'monthlyUsage',
-        'yearlyUsage',
+                'todayUsage',
+                'weeklyUsage',
+                'monthlyUsage',
+                'yearlyUsage',
 
-        'todayHours',
-        'weeklyHours',
-        'monthlyHours',
-        'yearlyHours',
+                'todayHours',
+                'weeklyHours',
+                'monthlyHours',
+                'yearlyHours',
 
-        'roomUsage',
-        'buildingUsage',
-        'usageByDay',
-        'usageByMonth',
-        'classesByDay',
-        'instructorLoad',
+                'roomUsage',
+                'buildingUsage',
+                'usageByDay',
+                'usageByMonth',
+                'classesByDay',
+                'instructorLoad',
 
-        'roomSort',
-        'buildingSort'
-    )
-);
+                'roomSort',
+                'buildingSort',
+
+                'activityLogs'
+            )
+        );
     }
 }

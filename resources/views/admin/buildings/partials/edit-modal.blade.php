@@ -42,6 +42,22 @@
 
                 </div>
 
+                <!-- Building Description -->
+
+<div>
+    <label class="block text-sm font-semibold text-slate-700 mb-2">
+        Description
+    </label>
+
+    <textarea
+        id="editBuildingDescription"
+        name="description"
+        rows="3"
+        maxlength="2000"
+        class="w-full rounded-xl border-slate-300 focus:border-[#0E4C6B] focus:ring-[#0E4C6B]"
+        placeholder="Describe the building and its purpose..."></textarea>
+</div>
+
                 <!-- Current Image -->
 
                 <div>

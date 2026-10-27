@@ -25,6 +25,8 @@ class StoreBuildingRequest extends FormRequest
 
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
 
+            'description' => 'nullable|string|max:2000',
+
         ];
     }
 }

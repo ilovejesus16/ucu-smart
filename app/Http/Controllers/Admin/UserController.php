@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use App\Imports\StudentsImport;
 use App\Imports\InstructorsImport;
@@ -12,9 +13,26 @@ use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
 
-
 class UserController extends Controller
 {
+    /**
+     * Record an activity performed by the authenticated user.
+     */
+    private function logActivity(string $action, string $module, string $description): void
+    {
+        $user = auth()->user();
+
+        ActivityLog::create([
+            'user_id' => $user?->id,
+            'user_name' => $user
+                ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+                : 'Unknown User',
+            'action' => $action,
+            'module' => $module,
+            'description' => $description,
+        ]);
+    }
+
     /**
      * Display User Management.
      */
@@ -24,39 +42,30 @@ class UserController extends Controller
 
         // Search
         if ($request->filled('search')) {
-
             $search = $request->search;
 
             $query->where(function ($q) use ($search) {
-
                 $q->where('student_id', 'like', "%{$search}%")
-                  ->orWhere('employee_id', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-
+                    ->orWhere('employee_id', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         // Role Filter
         if ($request->filled('role')) {
-
             $query->where('role', $request->role);
-
         }
 
         // Status Filter
         if ($request->filled('status')) {
-
             $query->where('status', $request->status);
-
         }
 
         // Course Filter
         if ($request->filled('course')) {
-
             $query->where('course', $request->course);
-
         }
 
         $users = $query
@@ -65,36 +74,33 @@ class UserController extends Controller
             ->withQueryString();
 
         return view('admin.users.index', [
-
             'users' => $users,
-
             'studentCount' => User::where('role', 'student')->count(),
-
             'instructorCount' => User::where('role', 'instructor')->count(),
-
             'adminCount' => User::where('role', 'admin')->count(),
-
             'pendingCount' => User::where('status', 'pending')->count(),
-
             'courses' => User::whereNotNull('course')
                 ->where('course', '!=', '')
                 ->distinct()
                 ->orderBy('course')
                 ->pluck('course'),
-
         ]);
     }
 
     /**
-     * Approve User
+     * Approve User.
      */
     public function approve(User $user)
     {
         $user->update([
-
             'status' => 'active',
-
         ]);
+
+        $this->logActivity(
+            'Approved',
+            'Users',
+            "Approved user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+        );
 
         return back()->with(
             'success',
@@ -103,15 +109,19 @@ class UserController extends Controller
     }
 
     /**
-     * Reject User
+     * Reject User.
      */
     public function reject(User $user)
     {
         $user->update([
-
             'status' => 'rejected',
-
         ]);
+
+        $this->logActivity(
+            'Rejected',
+            'Users',
+            "Rejected user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+        );
 
         return back()->with(
             'success',
@@ -120,22 +130,27 @@ class UserController extends Controller
     }
 
     /**
-     * Delete User
+     * Delete User.
      */
     public function destroy(User $user)
     {
-        // Prevent deleting yourself
-
+        // Prevent deleting yourself.
         if (auth()->id() == $user->id) {
-
             return back()->with(
                 'error',
                 'You cannot delete your own account.'
             );
-
         }
 
-        $name = $user->first_name . ' ' . $user->last_name;
+        // Save the details before deleting the user.
+        $name = trim($user->first_name . ' ' . $user->last_name);
+        $deletedUserId = $user->id;
+
+        $this->logActivity(
+            'Deleted',
+            'Users',
+            "Deleted user: {$name} (ID: {$deletedUserId})."
+        );
 
         $user->delete();
 
@@ -146,7 +161,7 @@ class UserController extends Controller
     }
 
     /**
-     * Delete All Users
+     * Delete All Users.
      *
      * Deletes all users except the currently logged-in administrator.
      */
@@ -154,7 +169,26 @@ class UserController extends Controller
     {
         $currentUserId = auth()->id();
 
-        $deletedCount = User::where('id', '!=', $currentUserId)->delete();
+        $usersToDelete = User::where('id', '!=', $currentUserId)->get();
+
+        $deletedCount = $usersToDelete->count();
+
+        if ($deletedCount > 0) {
+            $deletedNames = $usersToDelete
+                ->map(function ($user) {
+                    return trim($user->first_name . ' ' . $user->last_name)
+                        . " (ID: {$user->id})";
+                })
+                ->implode(', ');
+
+            $this->logActivity(
+                'Bulk Deleted',
+                'Users',
+                "Deleted {$deletedCount} user(s): {$deletedNames}."
+            );
+
+            User::where('id', '!=', $currentUserId)->delete();
+        }
 
         return redirect()
             ->route('admin.users')
@@ -165,7 +199,7 @@ class UserController extends Controller
     }
 
     /**
-     * Student Import Page
+     * Student Import Page.
      */
     public function studentImportForm()
     {
@@ -173,7 +207,7 @@ class UserController extends Controller
     }
 
     /**
-     * Instructor Import Page
+     * Instructor Import Page.
      */
     public function instructorImportForm()
     {
@@ -181,7 +215,7 @@ class UserController extends Controller
     }
 
     /**
-     * Import Students
+     * Import Students.
      */
     public function importStudents(Request $request)
     {
@@ -200,6 +234,9 @@ class UserController extends Controller
         return redirect()->route('admin.users.student.preview');
     }
 
+    /**
+     * Display Student Import Preview.
+     */
     public function studentPreview()
     {
         $students = session('student_import_preview', []);
@@ -219,7 +256,7 @@ class UserController extends Controller
     }
 
     /**
-     * Import Instructors
+     * Import Instructors.
      */
     public function importInstructors(Request $request)
     {
@@ -238,7 +275,9 @@ class UserController extends Controller
         return redirect()->route('admin.users.instructor.preview');
     }
 
-
+    /**
+     * Display Instructor Import Preview.
+     */
     public function instructorPreview()
     {
         $instructors = session('instructor_import_preview', []);
@@ -257,12 +296,15 @@ class UserController extends Controller
         ));
     }
 
+    /**
+     * Save Imported Instructors.
+     */
     public function storeImportedInstructors()
     {
         $instructors = session('instructor_import_preview', []);
+        $importedCount = 0;
 
         foreach ($instructors as $instructor) {
-
             if ($instructor['status'] !== 'new') {
                 continue;
             }
@@ -279,6 +321,16 @@ class UserController extends Controller
                 'email_verified_at' => now(),
                 'password' => Hash::make($instructor['employee_id']),
             ]);
+
+            $importedCount++;
+        }
+
+        if ($importedCount > 0) {
+            $this->logActivity(
+                'Imported',
+                'Users',
+                "Imported {$importedCount} instructor account(s)."
+            );
         }
 
         session()->forget('instructor_import_preview');
@@ -289,7 +341,7 @@ class UserController extends Controller
     }
 
     /**
-     * Export Users
+     * Export Users.
      */
     public function export()
     {
@@ -299,76 +351,77 @@ class UserController extends Controller
         );
     }
 
+    /**
+     * Download Student CSV Template.
+     */
     public function studentTemplate()
     {
         $headers = [
-
-            "Student ID",
-            "First Name",
-            "Last Name",
-            "Course",
-            "Email"
-
+            'Student ID',
+            'First Name',
+            'Last Name',
+            'Course',
+            'Email',
         ];
 
         $callback = function () use ($headers) {
-
             $file = fopen('php://output', 'w');
 
             fputcsv($file, $headers);
 
             fclose($file);
-
         };
 
         return Response::stream(
             $callback,
             200,
             [
-                "Content-Type" => "text/csv",
-                "Content-Disposition" => "attachment; filename=student_template.csv",
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename=student_template.csv',
             ]
         );
     }
 
+    /**
+     * Download Instructor CSV Template.
+     */
     public function instructorTemplate()
     {
         $headers = [
-
-            "Employee ID",
-            "First Name",
-            "Last Name",
-            "Department",
-            "Email"
-
+            'Employee ID',
+            'First Name',
+            'Last Name',
+            'Department',
+            'Email',
         ];
 
         $callback = function () use ($headers) {
-
             $file = fopen('php://output', 'w');
 
             fputcsv($file, $headers);
 
             fclose($file);
-
         };
 
         return Response::stream(
             $callback,
             200,
             [
-                "Content-Type" => "text/csv",
-                "Content-Disposition" => "attachment; filename=instructor_template.csv",
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename=instructor_template.csv',
             ]
         );
     }
 
+    /**
+     * Save Imported Students.
+     */
     public function storeImportedStudents()
     {
         $students = session('student_import_preview', []);
+        $importedCount = 0;
 
         foreach ($students as $student) {
-
             if ($student['status'] !== 'new') {
                 continue;
             }
@@ -385,6 +438,16 @@ class UserController extends Controller
                 'email_verified_at' => now(),
                 'password' => Hash::make($student['student_id']),
             ]);
+
+            $importedCount++;
+        }
+
+        if ($importedCount > 0) {
+            $this->logActivity(
+                'Imported',
+                'Users',
+                "Imported {$importedCount} student account(s)."
+            );
         }
 
         session()->forget('student_import_preview');
@@ -394,24 +457,32 @@ class UserController extends Controller
             ->with('success', 'Students imported successfully.');
     }
 
+    /**
+     * Show User.
+     */
     public function show(User $user)
     {
         return response()->json($user);
     }
 
+    /**
+     * Edit User.
+     */
     public function edit(User $user)
     {
         return response()->json($user);
     }
 
-
+    /**
+     * Update User.
+     */
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'email'      => 'required|email|max:255|unique:users,email,' . $user->id,
-            'status'     => 'required|in:active,pending,rejected',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'status' => 'required|in:active,pending,rejected',
             'department' => 'nullable|string|max:255',
         ]);
 
@@ -420,7 +491,7 @@ class UserController extends Controller
         $user->email = $validated['email'];
         $user->status = $validated['status'];
 
-        // Store in the correct field depending on the user's role
+        // Store in the correct field depending on the user's role.
         if ($user->role === 'student') {
             $user->course = $validated['department'];
         } else {
@@ -429,12 +500,20 @@ class UserController extends Controller
 
         $user->save();
 
+        $this->logActivity(
+            'Updated',
+            'Users',
+            "Updated user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+        );
+
         return redirect()
             ->route('admin.users')
             ->with('success', 'User updated successfully.');
     }
 
-
+    /**
+     * Create User.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -457,23 +536,16 @@ class UserController extends Controller
             'password' => 'required|min:8',
         ]);
 
-        // Determine username
+        // Determine username.
         if ($request->role === 'student') {
-
             $username = $request->student_id;
-
         } elseif ($request->role === 'instructor') {
-
             $username = $request->employee_id;
-
         } else {
-
             $username = $request->username;
-
         }
 
-        User::create([
-
+        $user = User::create([
             'role' => $request->role,
             'status' => $request->status,
 
@@ -492,8 +564,13 @@ class UserController extends Controller
             'email_verified_at' => now(),
 
             'password' => Hash::make($request->password),
-
         ]);
+
+        $this->logActivity(
+            'Created',
+            'Users',
+            "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+        );
 
         return redirect()
             ->route('admin.users')
