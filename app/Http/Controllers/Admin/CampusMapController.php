@@ -144,20 +144,23 @@ public function updateBuilding(Request $request, Building $building)
    
 if (!empty($changedFields)) {
     try {
-        ActivityLog::create([
-            'user_id' => Auth::id(),
-            'module' => 'Campus Map',
-            'action' => 'Updated building information',
-            'description' => sprintf(
-                'Updated building "%s" (Code: %s). Changed fields: %s.',
-                $oldName,
-                $building->building_code,
-                implode(', ', $changedFields)
-            ),
-        ]);
-    } catch (\Throwable $e) {
-        report($e);
-    }
+    $userId = Auth::guard('web')->id();
+
+    ActivityLog::create([
+        'user_id' => $userId,
+        'user_name' => Auth::guard('web')->user()?->name ?? 'System Administrator',
+        'module' => 'Campus Map',
+        'action' => 'Updated building information',
+        'description' => sprintf(
+            'Updated building "%s" (Code: %s). Changed fields: %s.',
+            $oldName,
+            $building->building_code,
+            implode(', ', $changedFields)
+        ),
+    ]);
+} catch (\Throwable $e) {
+    report($e);
+}
 }
 
 
