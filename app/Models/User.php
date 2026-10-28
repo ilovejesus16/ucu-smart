@@ -55,4 +55,63 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
         ];
     }
+
+    public function adminPermission()
+{
+    return $this->hasOne(\App\Models\AdminPermission::class);
+}
+
+
+public function hasAdminPermission(
+    string $feature,
+    string $minimumLevel = 'view'
+): bool {
+    $permissions = $this->adminPermission?->permissions ?? [];
+
+    $levels = [
+        'none' => 0,
+        'view' => 1,
+        'full' => 2,
+    ];
+
+    if (
+        !array_key_exists($feature, \App\Support\AdminPermissions::FEATURES) ||
+        !isset($levels[$minimumLevel])
+    ) {
+        return false;
+    }
+
+    $currentLevel = $permissions[$feature] ?? 'none';
+
+    return isset($levels[$currentLevel]) &&
+        $levels[$currentLevel] >= $levels[$minimumLevel];
+}
+
+/**
+ * Get the first admin page this user can access.
+ */
+public function firstAccessibleAdminRoute(): ?string
+{
+    $pages = [
+        'dashboard' => 'admin.dashboard',
+        'user_management' => 'admin.users',
+        'buildings' => 'buildings.index',
+        'rooms' => 'admin.rooms.index',
+        'schedule_management' => 'admin.schedules',
+        'campus_map' => 'admin.campus-map',
+        'reports' => 'admin.reports',
+    ];
+
+    foreach ($pages as $feature => $route) {
+        if (
+            $this->hasAdminPermission($feature, 'view')
+            && \Illuminate\Support\Facades\Route::has($route)
+        ) {
+            return $route;
+        }
+    }
+
+    return null;
+}
+
 }

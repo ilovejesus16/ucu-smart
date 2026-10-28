@@ -95,7 +95,7 @@
 
         <!-- Rooms -->
 
-        <a href="{{ route('rooms.index') }}"
+<a href="{{ route('admin.rooms.index') }}"
            class="group border rounded-2xl p-5 hover:border-purple-600 hover:bg-purple-50 transition">
 
             <div class="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mb-4 group-hover:bg-purple-600 transition">

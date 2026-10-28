@@ -23,7 +23,7 @@
         </div>
 
         <a
-            href="{{ route('rooms.index') }}"
+            href="{{ route('admin.rooms.index') }}"
             class="inline-flex items-center justify-center px-5 py-3 rounded-xl
                    border border-slate-300 bg-white text-slate-700
                    hover:bg-slate-100 transition">
@@ -309,7 +309,7 @@
                 <div class="flex flex-col sm:flex-row gap-3">
 
                     <a
-                        href="{{ route('rooms.index') }}"
+                        href="{{ route('admin.rooms.index') }}"
                         class="inline-flex items-center justify-center px-6 py-3
                                rounded-xl border border-slate-300
                                bg-white text-slate-700

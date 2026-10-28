@@ -205,7 +205,7 @@
 
 
             <!-- Dashboard -->
-
+@if(auth()->user()->hasAdminPermission('dashboard', 'view'))
             <a
                 href="{{ route('admin.dashboard') }}"
                 @click="open = false"
@@ -226,9 +226,10 @@
                 </span>
 
             </a>
-
+@endif
 
             <!-- User Management -->
+@if(auth()->user()->hasAdminPermission('user_management', 'view'))
 
             <a
                 href="{{ route('admin.users') }}"
@@ -250,10 +251,10 @@
                 </span>
 
             </a>
-
+@endif
 
             <!-- Buildings -->
-
+@if(auth()->user()->hasAdminPermission('buildings', 'view'))
             <a
                 href="{{ route('buildings.index') }}"
                 @click="open = false"
@@ -274,21 +275,21 @@
                 </span>
 
             </a>
-
+@endif
 
             <!-- Rooms -->
-
+@if(auth()->user()->hasAdminPermission('rooms', 'view'))
             <a
-                href="{{ route('rooms.index') }}"
+href="{{ route('admin.rooms.index') }}"
                 @click="open = false"
                 class="flex items-center gap-3
                        px-4 py-3
                        rounded-xl
                        transition
 
-                       {{ request()->routeIs('rooms*')
-                            ? 'bg-[#0E4C6B] shadow-lg'
-                            : 'hover:bg-[#163A74]' }}">
+                     {{ request()->routeIs('admin.rooms.*')
+    ? 'bg-[#0E4C6B] shadow-lg'
+    : 'hover:bg-[#163A74]' }}">
 
                 <x-heroicon-o-home-modern
                     class="w-6 h-6 flex-shrink-0"/>
@@ -298,9 +299,10 @@
                 </span>
 
             </a>
-
+@endif
 
             <!-- Schedules -->
+@if(auth()->user()->hasAdminPermission('schedule_management', 'view'))
 
             <a
                 href="{{ route('admin.schedules') }}"
@@ -322,8 +324,9 @@
                 </span>
 
             </a>
-
+@endif
 <!-- Campus Navigation -->
+@if(auth()->user()->hasAdminPermission('campus_map', 'view'))
 
 <a
     href="{{ route('admin.campus-map') }}"
@@ -344,9 +347,10 @@
     </span>
 
 </a>
-
+@endif
 
 <!-- Reports -->
+@if(auth()->user()->hasAdminPermission('reports', 'view'))
 
 <a
     href="{{ route('admin.reports') }}"
@@ -365,7 +369,7 @@
     <span>
         Reports
     </span>
-
+@endif
 </a>
 </nav>
            

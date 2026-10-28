@@ -1,3 +1,4 @@
+
 @extends('layouts.admin')
 
 @section('title', 'Room Management')
@@ -22,11 +23,8 @@
 
 {{-- Modals --}}
 @include('admin.rooms.partials.add-modal')
-
 @include('admin.rooms.partials.edit-modal')
-
 @include('admin.rooms.partials.view-modal')
-
 @include('admin.rooms.partials.delete-modal')
 
 {{-- Import Modal --}}

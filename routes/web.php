@@ -104,44 +104,52 @@ Route::middleware('auth')->group(function () {
     */
 
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
-        ->name('admin.dashboard');
+    ->middleware('admin.permission:dashboard,view')
+    ->name('admin.dashboard');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | User Management
-    |--------------------------------------------------------------------------
-    */
+   
+/*
+|--------------------------------------------------------------------------
+| User Management
+|--------------------------------------------------------------------------
+*/
 
-    Route::get('/admin/users', [UserController::class, 'index'])
-        ->name('admin.users');
+Route::get('/admin/users', [UserController::class, 'index'])
+    ->middleware('admin.permission:user_management,view')
+    ->name('admin.users');
 
-    Route::post('/admin/users', [UserController::class, 'store'])
-        ->name('admin.users.store');
+Route::post('/admin/users', [UserController::class, 'store'])
+    ->middleware('admin.permission:user_management,full')
+    ->name('admin.users.store');
 
-    Route::get('/admin/users/{user}', [UserController::class, 'show'])
-        ->name('admin.users.show');
+Route::get('/admin/users/{user}', [UserController::class, 'show'])
+    ->middleware('admin.permission:user_management,view')
+    ->name('admin.users.show');
 
-    Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])
-        ->name('admin.users.edit');
+Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])
+    ->middleware('admin.permission:user_management,view')
+    ->name('admin.users.edit');
 
-    Route::put('/admin/users/{user}', [UserController::class, 'update'])
-        ->name('admin.users.update');
+Route::put('/admin/users/{user}', [UserController::class, 'update'])
+    ->middleware('admin.permission:user_management,full')
+    ->name('admin.users.update');
 
-    Route::patch('/admin/users/{user}/approve', [UserController::class, 'approve'])
-        ->name('admin.users.approve');
+Route::patch('/admin/users/{user}/approve', [UserController::class, 'approve'])
+    ->middleware('admin.permission:user_management,full')
+    ->name('admin.users.approve');
 
-    Route::patch('/admin/users/{user}/reject', [UserController::class, 'reject'])
-        ->name('admin.users.reject');
+Route::patch('/admin/users/{user}/reject', [UserController::class, 'reject'])
+    ->middleware('admin.permission:user_management,full')
+    ->name('admin.users.reject');
 
-        Route::delete('/admin/users/delete-all', [UserController::class, 'deleteAll'])
+Route::delete('/admin/users/delete-all', [UserController::class, 'deleteAll'])
+    ->middleware('admin.permission:user_management,full')
     ->name('admin.users.deleteAll');
 
 Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
+    ->middleware('admin.permission:user_management,full')
     ->name('admin.users.destroy');
-
-    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
-        ->name('admin.users.destroy');
 
 
     /*
@@ -153,30 +161,38 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     // Students
 
     Route::get('/admin/users/import/students', [UserController::class, 'studentImportForm'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.import.students');
 
     Route::post('/admin/users/import/students', [UserController::class, 'importStudents'])
+        ->middleware('admin.permission:user_management,full')
         ->name('admin.users.import.students.store');
 
     Route::get('/admin/users/import/students/preview', [UserController::class, 'studentPreview'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.student.preview');
 
     Route::post('/admin/users/import/students/store', [UserController::class, 'storeImportedStudents'])
+        ->middleware('admin.permission:user_management,full')
         ->name('admin.users.student.store');
 
 
     // Instructors
 
     Route::get('/admin/users/import/instructors', [UserController::class, 'instructorImportForm'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.import.instructors');
 
     Route::post('/admin/users/import/instructors', [UserController::class, 'importInstructors'])
+        ->middleware('admin.permission:user_management,full')
         ->name('admin.users.import.instructors.store');
 
     Route::get('/admin/users/import/instructors/preview', [UserController::class, 'instructorPreview'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.instructor.preview');
 
     Route::post('/admin/users/import/instructors/store', [UserController::class, 'storeImportedInstructors'])
+        ->middleware('admin.permission:user_management,full')
         ->name('admin.users.instructor.store');
 
 
@@ -187,9 +203,11 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     */
 
     Route::get('/admin/users/template/students', [UserController::class, 'studentTemplate'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.template.students');
 
     Route::get('/admin/users/template/instructors', [UserController::class, 'instructorTemplate'])
+        ->middleware('admin.permission:user_management,view')
         ->name('admin.users.template.instructors');
 
 
@@ -200,26 +218,16 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     */
 
     Route::get('/admin/buildings', [BuildingController::class, 'index'])
+        ->middleware('admin.permission:buildings,view')
         ->name('buildings.index');
 
     Route::post('/admin/buildings', [BuildingController::class, 'store'])
+        ->middleware('admin.permission:buildings,full')
         ->name('buildings.store');
-    
+
     Route::delete('/admin/buildings/delete-all', [BuildingController::class, 'deleteAll'])
-    ->name('buildings.deleteAll');
-
-    Route::get('/admin/buildings/{building}', [BuildingController::class, 'show'])
-        ->name('buildings.show');
-
-    Route::get('/admin/buildings/{building}/edit', [BuildingController::class, 'edit'])
-        ->name('buildings.edit');
-
-    Route::put('/admin/buildings/{building}', [BuildingController::class, 'update'])
-        ->name('buildings.update');
-
-    Route::delete('/admin/buildings/{building}', [BuildingController::class, 'destroy'])
-        ->name('buildings.destroy');
-
+        ->middleware('admin.permission:buildings,full')
+        ->name('buildings.deleteAll');
 
     /*
     |--------------------------------------------------------------------------
@@ -228,22 +236,44 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     */
 
     Route::get('/admin/buildings/import', [BuildingController::class, 'importForm'])
+        ->middleware('admin.permission:buildings,view')
         ->name('buildings.import');
 
     Route::post('/admin/buildings/import', [BuildingController::class, 'importBuildings'])
+        ->middleware('admin.permission:buildings,full')
         ->name('buildings.import.store');
 
     Route::get('/admin/buildings/import/preview', [BuildingController::class, 'preview'])
+        ->middleware('admin.permission:buildings,view')
         ->name('buildings.preview');
 
     Route::post('/admin/buildings/import/store', [BuildingController::class, 'storeImportedBuildings'])
+        ->middleware('admin.permission:buildings,full')
         ->name('buildings.store.import');
 
     Route::get('/admin/buildings/template', [BuildingController::class, 'template'])
+        ->middleware('admin.permission:buildings,view')
         ->name('buildings.template');
 
     Route::get('/admin/buildings/export', [BuildingController::class, 'export'])
+        ->middleware('admin.permission:buildings,view')
         ->name('buildings.export');
+
+    Route::get('/admin/buildings/{building}', [BuildingController::class, 'show'])
+        ->middleware('admin.permission:buildings,view')
+        ->name('buildings.show');
+
+    Route::get('/admin/buildings/{building}/edit', [BuildingController::class, 'edit'])
+    ->middleware('admin.permission:buildings,view')
+    ->name('buildings.edit');  
+
+    Route::put('/admin/buildings/{building}', [BuildingController::class, 'update'])
+        ->middleware('admin.permission:buildings,full')
+        ->name('buildings.update');
+
+    Route::delete('/admin/buildings/{building}', [BuildingController::class, 'destroy'])
+        ->middleware('admin.permission:buildings,full')
+        ->name('buildings.destroy');
 
 
     /*
@@ -253,33 +283,44 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     */
 
     Route::get('/campus-map', [CampusMapController::class, 'index'])
+        ->middleware('admin.permission:campus_map,view')
         ->name('admin.campus-map');
 
     Route::post('/campus-map/positions', [CampusMapController::class, 'savePositions'])
+        ->middleware('admin.permission:campus_map,full')
         ->name('admin.campus-map.positions');
 
     Route::post('/campus-map/reset-positions', [CampusMapController::class, 'resetPositions'])
+        ->middleware('admin.permission:campus_map,full')
         ->name('admin.campus-map.reset');
     
     Route::post(
     '/campus-map/locations/{location}/remove-position',
     [\App\Http\Controllers\Admin\CampusMapController::class, 'removePosition']
-)->name('admin.campus-map.remove-position');
+)
+        ->middleware('admin.permission:campus_map,full')
+        ->name('admin.campus-map.remove-position');
 
 Route::patch(
     '/campus-map/buildings/{building}',
     [CampusMapController::class, 'updateBuilding']
-)->name('admin.campus-map.buildings.update');
+)
+        ->middleware('admin.permission:campus_map,full')
+        ->name('admin.campus-map.buildings.update');
 
 Route::patch(
     '/campus-map/locations/{location}/link-building',
     [CampusMapController::class, 'linkBuilding']
-)->name('admin.campus-map.locations.link-building');
+)
+        ->middleware('admin.permission:campus_map,full')
+        ->name('admin.campus-map.locations.link-building');
 
 Route::patch(
     '/campus-map/locations/{location}/update',
     [\App\Http\Controllers\Admin\CampusMapController::class, 'updateLocation']
-)->name('admin.campus-map.locations.update');
+)
+        ->middleware('admin.permission:campus_map,full')
+        ->name('admin.campus-map.locations.update');
 
 
     /*
@@ -289,21 +330,27 @@ Route::patch(
     */
 
     Route::get('/admin/rooms/import', [RoomController::class, 'importForm'])
+        ->middleware('admin.permission:rooms,view')
         ->name('rooms.import');
 
     Route::post('/admin/rooms/import', [RoomController::class, 'importRooms'])
+        ->middleware('admin.permission:rooms,full')
         ->name('rooms.import.store');
 
     Route::get('/admin/rooms/import/preview', [RoomController::class, 'preview'])
+        ->middleware('admin.permission:rooms,view')
         ->name('rooms.preview');
 
     Route::post('/admin/rooms/import/store', [RoomController::class, 'storeImportedRooms'])
+        ->middleware('admin.permission:rooms,full')
         ->name('rooms.store.import');
 
     Route::get('/admin/rooms/template', [RoomController::class, 'template'])
+        ->middleware('admin.permission:rooms,view')
         ->name('rooms.template');
 
     Route::get('/admin/rooms/export', [RoomController::class, 'export'])
+        ->middleware('admin.permission:rooms,view')
         ->name('rooms.export');
 
 
@@ -314,7 +361,8 @@ Route::patch(
 */
 
 Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
-    ->name('rooms.deleteAll');
+        ->middleware('admin.permission:rooms,full')
+        ->name('rooms.deleteAll');
 
     /*
     |--------------------------------------------------------------------------
@@ -322,7 +370,37 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
     |--------------------------------------------------------------------------
     */
 
-    Route::resource('/admin/rooms', RoomController::class);
+    Route::get('/admin/rooms', [RoomController::class, 'index'])
+        ->middleware('admin.permission:rooms,view')
+        ->name('admin.rooms.index');
+
+    Route::get('/admin/rooms/create', [RoomController::class, 'create'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.create');
+
+    Route::post('/admin/rooms', [RoomController::class, 'store'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.store');
+
+    Route::get('/admin/rooms/{room}', [RoomController::class, 'show'])
+        ->middleware('admin.permission:rooms,view')
+        ->name('admin.rooms.show');
+
+    Route::get('/admin/rooms/{room}/edit', [RoomController::class, 'edit'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.edit');
+
+    Route::put('/admin/rooms/{room}', [RoomController::class, 'update'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.update');
+
+    Route::patch('/admin/rooms/{room}', [RoomController::class, 'update'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.update');
+
+    Route::delete('/admin/rooms/{room}', [RoomController::class, 'destroy'])
+        ->middleware('admin.permission:rooms,full')
+        ->name('admin.rooms.destroy');
 
 
     /*
@@ -334,41 +412,55 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
     Route::get(
         '/admin/schedules',
         [ScheduleController::class, 'index']
-    )->name('admin.schedules');
+    )
+        ->middleware('admin.permission:schedule_management,view')
+        ->name('admin.schedules');
 
 
     Route::post(
         '/admin/schedules/import',
         [ScheduleImportController::class, 'store']
-    )->name('admin.schedules.import');
+    )
+        ->middleware('admin.permission:schedule_management,full')
+        ->name('admin.schedules.import');
 
 
     Route::get(
         '/admin/schedules/import/preview',
         [ScheduleImportController::class, 'preview']
-    )->name('admin.schedules.preview');
+    )
+        ->middleware('admin.permission:schedule_management,view')
+        ->name('admin.schedules.preview');
 
 
     Route::post(
         '/admin/schedules/import/store',
         [ScheduleImportController::class, 'storeImportedSchedules']
-    )->name('admin.schedules.store');
+    )
+        ->middleware('admin.permission:schedule_management,full')
+        ->name('admin.schedules.store');
 
     Route::delete(
         '/admin/schedules/bulk-delete',
         [ScheduleController::class, 'bulkDelete']
-    )->name('admin.schedules.bulk-delete');
+    )
+        ->middleware('admin.permission:schedule_management,full')
+        ->name('admin.schedules.bulk-delete');
 
     Route::delete(
         '/admin/schedules/{schedule}',
         [ScheduleController::class, 'destroy']
-    )->name('admin.schedules.destroy');
+    )
+        ->middleware('admin.permission:schedule_management,full')
+        ->name('admin.schedules.destroy');
 
 
     Route::post(
         '/admin/schedules/import/cancel',
         [ScheduleImportController::class, 'cancel']
-    )->name('admin.schedules.cancel');
+    )
+        ->middleware('admin.permission:schedule_management,full')
+        ->name('admin.schedules.cancel');
 
 
     /*
@@ -380,7 +472,9 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
     Route::get(
         '/admin/reports',
         [ReportController::class, 'index']
-    )->name('admin.reports');
+    )
+        ->middleware('admin.permission:reports,view')
+        ->name('admin.reports');
 
 
     /*

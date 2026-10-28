@@ -4,56 +4,66 @@
 
 @section('content')
 
-<div class="space-y-8">
+<div class="space-y-7">
 
-    {{-- Welcome Banner --}}
-    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+    {{-- Compact Welcome Header --}}
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 
-        <div class="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 break-words">
-                Good {{ now()->hour < 12 ? 'Morning' : (now()->hour < 18 ? 'Afternoon' : 'Evening') }}, Administrator!
-            </h1>
-
-            <p class="text-gray-500 mt-2 text-sm sm:text-base">
-                Welcome to the UCU Smart+ Registrar Control Center
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#0E4C6B] mb-2">
+                UCU SMART+ 
             </p>
 
-            <div class="flex flex-wrap items-center gap-2 mt-5 text-blue-700">
+           <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-800">
+    Good {{ now()->hour < 12 ? 'Morning' : (now()->hour < 18 ? 'Afternoon' : 'Evening') }},
+    {{ auth()->user()->first_name
+        ? auth()->user()->first_name . ' ' . auth()->user()->last_name
+        : auth()->user()->name ?? 'User' }}!
+</h1>
 
-                <x-heroicon-o-calendar-days class="w-5 h-5"/>
+            <p class="text-sm text-slate-500 mt-2">
+                Here's what's happening across your campus today.
+            </p>
+        </div>
 
-                <span class="font-medium break-words">
+        <div class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 shrink-0">
+            <x-heroicon-o-calendar-days class="w-5 h-5 text-[#0E4C6B]"/>
 
-                    {{ now()->format('l, F d, Y') }}
-
-                </span>
-
-            </div>
-
+            <span>{{ now()->format('l, F d, Y') }}</span>
         </div>
 
     </div>
 
+
+    {{-- Campus Statistics --}}
     @include('admin.dashboard.stats')
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div>
+    {{-- Main Dashboard Content --}}
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-x-8 gap-y-8">
+
+        {{-- Quick Actions --}}
+        <section class="xl:col-span-4 min-w-0">
             @include('admin.dashboard.quick-actions')
-        </div>
+        </section>
 
-        <div>
+        {{-- Pending Approvals --}}
+        <section class="xl:col-span-4 min-w-0">
             @include('admin.dashboard.pending')
-        </div>
+        </section>
 
-        <div>
+        {{-- Recent Users --}}
+        <section class="xl:col-span-4 min-w-0">
             @include('admin.dashboard.recent-users')
-        </div>
+        </section>
 
     </div>
 
-    @include('admin.dashboard.academic')
+
+    {{-- Academic / Room Overview --}}
+    <section class="pt-2">
+        @include('admin.dashboard.academic')
+    </section>
 
 </div>
 

@@ -158,7 +158,7 @@ public function store(StoreRoomRequest $request)
         Room::query()->delete();
 
         return redirect()
-            ->route('rooms.index')
+            ->route('admin.rooms.index')
             ->with(
                 'success',
                 'All rooms deleted successfully.'
@@ -257,7 +257,7 @@ public function store(StoreRoomRequest $request)
         session()->forget('room_import_preview');
 
         return redirect()
-            ->route('rooms.index')
+            ->route('admin.rooms.index')
             ->with(
                 'success',
                 'Rooms imported successfully.'

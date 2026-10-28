@@ -35,8 +35,10 @@ class AuthenticatedSessionController extends Controller
         */
 
         if (!$user->hasVerifiedEmail()) {
-
             Auth::logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
             return back()->withErrors([
                 'email' => 'Please verify your email before logging in.',
@@ -50,8 +52,10 @@ class AuthenticatedSessionController extends Controller
         */
 
         if ($user->status !== 'active') {
-
             Auth::logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
             return back()->withErrors([
                 'email' => 'Your account is still awaiting Registrar approval.',
@@ -73,15 +77,31 @@ class AuthenticatedSessionController extends Controller
         */
 
         if ($user->role === 'admin') {
+            $destination = $user->firstAccessibleAdminRoute();
 
-            return redirect()->route('admin.dashboard');
+            if ($destination !== null) {
+                return redirect()->route($destination);
+            }
 
+            /*
+             * No accessible admin features.
+             * Log out instead of sending the user to a 403 page.
+             */
+
+            Auth::logout();
+
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Your account has no accessible admin features. Please contact the system administrator.',
+                ]);
         }
 
         if ($user->role === 'instructor') {
-
             return redirect()->route('instructor.dashboard');
-
         }
 
         return redirect()->route('student.dashboard');

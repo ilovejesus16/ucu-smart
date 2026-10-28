@@ -2,7 +2,7 @@
 
     <form
         method="GET"
-        action="{{ route('rooms.index') }}"
+        action="{{ route('admin.rooms.index') }}"
         class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         <!-- Search -->
@@ -91,7 +91,7 @@
         <div class="md:col-span-3 flex justify-end gap-3">
 
             <a
-                href="{{ route('rooms.index') }}"
+                href="{{ route('admin.rooms.index') }}"
                 class="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100">
 
                 Reset

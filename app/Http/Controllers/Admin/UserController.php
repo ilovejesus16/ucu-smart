@@ -514,66 +514,81 @@ class UserController extends Controller
     /**
      * Create User.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'role' => 'required|in:student,instructor,admin',
-            'status' => 'required|in:active,pending,rejected',
+    
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'role' => 'required|in:student,instructor,admin',
+        'status' => 'required|in:active,pending,rejected',
 
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
 
-            'email' => 'required|email|unique:users,email',
+        'email' => 'required|email|unique:users,email',
 
-            'student_id' => 'nullable|unique:users,student_id',
-            'employee_id' => 'nullable|unique:users,employee_id',
+        'student_id' => 'nullable|unique:users,student_id',
+        'employee_id' => 'nullable|unique:users,employee_id',
 
-            'username' => 'required_if:role,admin|nullable|unique:users,username',
+        'username' => 'required_if:role,admin|nullable|unique:users,username',
 
-            'course' => 'nullable|string|max:255',
-            'department' => 'nullable|string|max:255',
+        'course' => 'nullable|string|max:255',
+        'department' => 'nullable|string|max:255',
 
-            'password' => 'required|min:8',
-        ]);
+        'password' => 'required|min:8',
 
-        // Determine username.
-        if ($request->role === 'student') {
-            $username = $request->student_id;
-        } elseif ($request->role === 'instructor') {
-            $username = $request->employee_id;
-        } else {
-            $username = $request->username;
-        }
+        // Permissions are accepted only for admin accounts.
+        'permissions' => 'required_if:role,admin|array',
+        'permissions.*' => 'in:none,view,full',
+    ]);
 
-        $user = User::create([
-            'role' => $request->role,
-            'status' => $request->status,
-
-            'username' => $username,
-
-            'student_id' => $request->student_id,
-            'employee_id' => $request->employee_id,
-
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-
-            'course' => $request->course,
-            'department' => $request->department,
-
-            'email' => $request->email,
-            'email_verified_at' => now(),
-
-            'password' => Hash::make($request->password),
-        ]);
-
-        $this->logActivity(
-            'Created',
-            'Users',
-            "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id})."
-        );
-
-        return redirect()
-            ->route('admin.users')
-            ->with('success', 'User added successfully.');
+    // Determine username.
+    if ($validated['role'] === 'student') {
+        $username = $validated['student_id'];
+    } elseif ($validated['role'] === 'instructor') {
+        $username = $validated['employee_id'];
+    } else {
+        $username = $validated['username'];
     }
+
+    // Create the user with the existing account logic.
+    $user = User::create([
+        'role' => $validated['role'],
+        'status' => $validated['status'],
+
+        'username' => $username,
+
+        'student_id' => $validated['student_id'] ?? null,
+        'employee_id' => $validated['employee_id'] ?? null,
+
+        'first_name' => $validated['first_name'],
+        'last_name' => $validated['last_name'],
+
+        'course' => $validated['course'] ?? null,
+        'department' => $validated['department'] ?? null,
+
+        'email' => $validated['email'],
+        'email_verified_at' => now(),
+
+        'password' => Hash::make($validated['password']),
+    ]);
+
+    // Save permissions only for admin accounts.
+    if ($user->role === 'admin') {
+        \App\Models\AdminPermission::updateOrCreate(
+            ['user_id' => $user->id],
+            ['permissions' => $validated['permissions']]
+        );
+    }
+
+    $this->logActivity(
+        'Created',
+        'Users',
+        "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+    );
+
+    return redirect()
+        ->route('admin.users')
+        ->with('success', 'User added successfully.');
+}
+
 }

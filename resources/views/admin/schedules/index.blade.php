@@ -25,46 +25,48 @@
         </div>
 
 
-        <!-- Action Buttons -->
+       <!-- Action Buttons -->
 
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
 
-            <!-- Bulk Delete -->
-            <button
-                type="button"
-                id="openBulkDelete"
-                class="inline-flex items-center justify-center gap-2
-                       rounded-xl border border-red-200
-                       bg-red-50
-                       px-5 py-3
-                       text-sm font-semibold text-red-600
-                       hover:bg-red-100
-                       transition">
+    @if(auth()->user()->hasAdminPermission('schedule_management', 'full'))
 
-                <x-heroicon-o-trash class="w-5 h-5"/>
+        <!-- Bulk Delete -->
+        <button
+            type="button"
+            id="openBulkDelete"
+            class="inline-flex items-center justify-center gap-2
+                   rounded-xl border border-red-200
+                   bg-red-50
+                   px-5 py-3
+                   text-sm font-semibold text-red-600
+                   hover:bg-red-100
+                   transition">
 
-                Delete Schedules
+            <x-heroicon-o-trash class="w-5 h-5"/>
 
-            </button>
+            Delete Schedules
+        </button>
 
-            <!-- Import -->
-            <button
-                type="button"
-                id="openImportSchedule"
-                class="inline-flex items-center justify-center gap-2
-                       rounded-xl bg-[#0E4C6B]
-                       px-5 py-3
-                       text-sm font-semibold text-white
-                       hover:bg-[#0B3D56]
-                       transition shadow-sm">
+        <!-- Import -->
+        <button
+            type="button"
+            id="openImportSchedule"
+            class="inline-flex items-center justify-center gap-2
+                   rounded-xl bg-[#0E4C6B]
+                   px-5 py-3
+                   text-sm font-semibold text-white
+                   hover:bg-[#0B3D56]
+                   transition shadow-sm">
 
-                <x-heroicon-o-arrow-up-tray class="w-5 h-5"/>
+            <x-heroicon-o-arrow-up-tray class="w-5 h-5"/>
 
-                Import Schedule
+            Import Schedule
+        </button>
 
-            </button>
+    @endif
 
-        </div>
+</div>
 
     </div>
 

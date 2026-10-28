@@ -1,3 +1,4 @@
+@if(auth()->user()->hasAdminPermission('buildings', 'full'))
 <div id="importBuildingModal"
      class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
 
@@ -14,7 +15,7 @@
             </p>
 
         </div>
-
+@endif
         <form
             action="{{ route('buildings.import.store') }}"
             method="POST"

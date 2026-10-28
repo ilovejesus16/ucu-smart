@@ -82,7 +82,7 @@
             <!-- View Rooms -->
 
             <a
-                href="{{ route('rooms.index', ['building' => $building->id]) }}"
+                href="{{ route('admin.rooms.index', ['building' => $building->id]) }}"
                 class="flex items-center gap-3 px-4 py-2 hover:bg-slate-100">
 
                 <svg xmlns="http://www.w3.org/2000/svg"

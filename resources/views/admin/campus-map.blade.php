@@ -65,6 +65,7 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    @if(auth()->user()->hasAdminPermission('campus_map', 'full'))
                     <button type="button"
                             @click="toggleEditMode()"
                             class="px-4 py-2 rounded-lg text-sm font-semibold border transition"
@@ -73,7 +74,7 @@
                                 : 'bg-[#0E2958] border-[#0E2958] text-white hover:bg-[#0B2148]'"
                             x-text="editMode ? 'Exit Edit Mode' : 'Edit Locations'">
                     </button>
-
+@endif
                     <button type="button"
                             @click="zoomOut()"
                             class="w-10 h-10 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 font-bold">
@@ -294,6 +295,7 @@
         <h3 class="text-sm font-semibold text-gray-900">
             Building Information
         </h3>
+@if(auth()->user()->hasAdminPermission('campus_map', 'full'))
 
         <button
             type="button"
@@ -302,6 +304,7 @@
         >
             <span x-text="editingBuilding ? 'Cancel' : 'Edit Information'"></span>
         </button>
+@endif
     </div>
 
     <div x-show="!editingBuilding" class="space-y-2 text-xs">
@@ -456,6 +459,7 @@
                 <h3 class="text-sm font-semibold text-gray-900">
                     Building Information
                 </h3>
+@if(auth()->user()->hasAdminPermission('campus_map', 'full'))
 
                 <button
                     type="button"
@@ -464,6 +468,7 @@
                 >
                     <span x-text="editingLocation ? 'Cancel' : 'Edit Information'"></span>
                 </button>
+@endif
             </div>
 
             <div x-show="!editingLocation" class="space-y-2 text-xs">
