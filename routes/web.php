@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\BuildingController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\ScheduleImportController;
+use App\Http\Controllers\Admin\RoomMonitoringController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
@@ -16,6 +17,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Admin\CampusMapController;
+use App\Models\CampusLocation;
+use App\Models\Building;
+use App\Models\College;
+use App\Models\AcademicYear;
 
 
 /*
@@ -84,7 +89,48 @@ Route::get('/verify-email/{id}/{hash}', function (
 
 
 Route::get('/visitor', function () {
-    return view('visitor.dashboard');
+
+    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+
+    $colleges = College::orderBy('college_code')->get();
+
+    $locations = CampusLocation::with('building')
+        ->orderBy('number')
+        ->get();
+
+    $buildings = Building::with([
+        'rooms' => function ($query) use ($activeAcademicYear) {
+
+            $query->orderBy('floor')
+                  ->orderBy('room_number');
+
+            $query->with([
+                'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
+
+                    if ($activeAcademicYear) {
+                        $assignmentQuery->where(
+                            'academic_year_id',
+                            $activeAcademicYear->id
+                        );
+                    } else {
+                        $assignmentQuery->whereRaw('1 = 0');
+                    }
+
+                    $assignmentQuery->with('college');
+                }
+            ]);
+        }
+    ])
+    ->orderBy('building_code')
+    ->get();
+
+    return view('visitor.dashboard', compact(
+        'locations',
+        'buildings',
+        'colleges',
+        'activeAcademicYear'
+    ));
+
 })->name('visitor.dashboard');
 
 
@@ -194,6 +240,9 @@ Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])
     Route::post('/admin/users/import/instructors/store', [UserController::class, 'storeImportedInstructors'])
         ->middleware('admin.permission:user_management,full')
         ->name('admin.users.instructor.store');
+
+
+
 
 
     /*
@@ -477,6 +526,47 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
         ->name('admin.reports');
 
 
+            /*
+    |--------------------------------------------------------------------------
+    | HR Room Monitoring
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/admin/room-monitoring',
+        [RoomMonitoringController::class, 'index']
+    )
+        ->middleware('admin.permission:room_monitoring,view')
+        ->name('admin.room-monitoring');
+
+    Route::get(
+        '/admin/room-monitoring/buildings/{building}',
+        [RoomMonitoringController::class, 'buildingRooms']
+    )
+        ->middleware('admin.permission:room_monitoring,view')
+        ->name('admin.room-monitoring.buildings');
+
+    Route::get(
+        '/admin/room-monitoring/rooms/{room}',
+        [RoomMonitoringController::class, 'roomDetails']
+    )
+        ->middleware('admin.permission:room_monitoring,view')
+        ->name('admin.room-monitoring.rooms.show');
+
+    Route::post(
+        '/admin/room-monitoring/rooms/{room}/attendance',
+        [RoomMonitoringController::class, 'storeAttendance']
+    )
+        ->middleware('admin.permission:room_monitoring,full')
+        ->name('admin.room-monitoring.attendance.store');
+
+    Route::get(
+        '/admin/room-monitoring/rooms/{room}/history',
+        [RoomMonitoringController::class, 'history']
+    )
+        ->middleware('admin.permission:room_monitoring,view')
+        ->name('admin.room-monitoring.rooms.history');
+
     /*
     |--------------------------------------------------------------------------
     | Student
@@ -495,9 +585,42 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
     Route::get('/student/room/{room}', [StudentDashboardController::class, 'roomDetails'])
         ->name('student.rooms.show');
 
-    Route::get('/student/campus-navigation', function () {
-        return view('visitor.dashboard');
-    })->name('student.campus-navigation');
+   Route::get('/student/campus-navigation', function () {
+
+    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+
+    $colleges = College::orderBy('college_code')->get();
+
+    $locations = CampusLocation::with('building')
+        ->orderBy('number')
+        ->get();
+
+    $buildings = Building::with([
+        'rooms' => function ($query) use ($activeAcademicYear) {
+            $query->orderBy('floor')->orderBy('room_number');
+
+            $query->with([
+                'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
+                    if ($activeAcademicYear) {
+                        $assignmentQuery->where('academic_year_id', $activeAcademicYear->id);
+                    } else {
+                        $assignmentQuery->whereRaw('1 = 0');
+                    }
+
+                    $assignmentQuery->with('college');
+                }
+            ]);
+        }
+    ])->orderBy('building_code')->get();
+
+    return view('visitor.dashboard', compact(
+        'locations',
+        'buildings',
+        'colleges',
+        'activeAcademicYear'
+    ));
+
+})->name('student.campus-navigation');
 
     Route::get('/student/profile', function () {
         return view('student.profile');
@@ -558,8 +681,41 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
     )->name('instructor.schedule.end');
 
     Route::get('/instructor/campus-navigation', function () {
-        return view('visitor.dashboard');
-    })->name('instructor.campus-navigation');
+
+    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+
+    $colleges = College::orderBy('college_code')->get();
+
+    $locations = CampusLocation::with('building')
+        ->orderBy('number')
+        ->get();
+
+    $buildings = Building::with([
+        'rooms' => function ($query) use ($activeAcademicYear) {
+            $query->orderBy('floor')->orderBy('room_number');
+
+            $query->with([
+                'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
+                    if ($activeAcademicYear) {
+                        $assignmentQuery->where('academic_year_id', $activeAcademicYear->id);
+                    } else {
+                        $assignmentQuery->whereRaw('1 = 0');
+                    }
+
+                    $assignmentQuery->with('college');
+                }
+            ]);
+        }
+    ])->orderBy('building_code')->get();
+
+    return view('visitor.dashboard', compact(
+        'locations',
+        'buildings',
+        'colleges',
+        'activeAcademicYear'
+    ));
+
+})->name('instructor.campus-navigation');
 
     Route::get('/instructor/profile', function () {
         return view('instructor.profile');

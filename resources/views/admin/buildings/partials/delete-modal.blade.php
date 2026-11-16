@@ -1,3 +1,4 @@
+@if(auth()->user()->hasAdminPermission('buildings', 'full'))
 <div id="deleteBuildingModal"
      class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
 
@@ -21,6 +22,7 @@
                 </svg>
 
             </div>
+@endif
 
             <h2 class="mt-6 text-2xl font-bold text-center text-slate-800">
 

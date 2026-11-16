@@ -7,6 +7,8 @@ use App\Models\CampusLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Building;
+use App\Models\College;
+use App\Models\AcademicYear;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,21 +16,57 @@ class CampusMapController extends Controller
 {
    
 
+
+
 public function index()
 {
+    // Get the active academic year
+    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+
+    // Get all colleges and their saved colors for the legend
+    $colleges = College::orderBy('college_code')->get();
+
+    // Load campus locations and their linked buildings
     $locations = CampusLocation::with('building')
         ->orderBy('number')
         ->get();
 
+    // Load buildings, rooms, and their college assignments
     $buildings = Building::with([
-        'rooms' => function ($query) {
+        'rooms' => function ($query) use ($activeAcademicYear) {
+
             $query->orderBy('floor')
                   ->orderBy('room_number');
-        }
-    ])->orderBy('building_code')->get();
 
-    return view('admin.campus-map', compact('locations', 'buildings'));
+            $query->with([
+                'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
+
+                    if ($activeAcademicYear) {
+                        $assignmentQuery->where(
+                            'academic_year_id',
+                            $activeAcademicYear->id
+                        );
+                    } else {
+                        $assignmentQuery->whereRaw('1 = 0');
+                    }
+
+                    $assignmentQuery->with('college');
+                }
+            ]);
+        }
+    ])
+    ->orderBy('building_code')
+    ->get();
+
+    return view('admin.campus-map', compact(
+        'locations',
+        'buildings',
+        'activeAcademicYear',
+        'colleges'
+    ));
 }
+
+
 
 
     public function savePositions(Request $request)

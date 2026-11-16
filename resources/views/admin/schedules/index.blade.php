@@ -4,13 +4,13 @@
 
 @section('content')
 
-<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+<div class="w-full mx-auto p-4 sm:p-6 lg:p-8">
 
     <!-- ===================================================== -->
     <!-- HEADER -->
     <!-- ===================================================== -->
 
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
 
         <div>
 
@@ -35,13 +35,7 @@
         <button
             type="button"
             id="openBulkDelete"
-            class="inline-flex items-center justify-center gap-2
-                   rounded-xl border border-red-200
-                   bg-red-50
-                   px-5 py-3
-                   text-sm font-semibold text-red-600
-                   hover:bg-red-100
-                   transition">
+            class="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition">
 
             <x-heroicon-o-trash class="w-5 h-5"/>
 
@@ -52,12 +46,7 @@
         <button
             type="button"
             id="openImportSchedule"
-            class="inline-flex items-center justify-center gap-2
-                   rounded-xl bg-[#0E4C6B]
-                   px-5 py-3
-                   text-sm font-semibold text-white
-                   hover:bg-[#0B3D56]
-                   transition shadow-sm">
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E4C6B] px-5 py-3 text-sm font-medium text-white hover:bg-[#0B3D56] transition">
 
             <x-heroicon-o-arrow-up-tray class="w-5 h-5"/>
 
@@ -123,21 +112,24 @@
     <!-- STATISTICS -->
     <!-- ===================================================== -->
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
 
 
         <!-- Total -->
 
         <div
-            class="bg-white rounded-2xl
-                   border border-slate-200
-                   shadow-sm p-6">
+            class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
 
-            <p class="text-sm text-slate-500">
-                Total Schedules
-            </p>
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-slate-500">
+                    Total Schedules
+                </p>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <x-heroicon-o-calendar-days class="h-5 w-5"/>
+                </div>
+            </div>
 
-            <h2 class="mt-2 text-3xl font-bold text-slate-800">
+            <h2 class="mt-3 text-3xl font-bold text-slate-800">
 
                 {{ $schedules->total() }}
 
@@ -149,15 +141,18 @@
         <!-- Instructors -->
 
         <div
-            class="bg-white rounded-2xl
-                   border border-slate-200
-                   shadow-sm p-6">
+            class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
 
-            <p class="text-sm text-slate-500">
-                Instructors
-            </p>
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-slate-500">
+                    Instructors
+                </p>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <x-heroicon-o-users class="h-5 w-5"/>
+                </div>
+            </div>
 
-            <h2 class="mt-2 text-3xl font-bold text-slate-800">
+            <h2 class="mt-3 text-3xl font-bold text-slate-800">
 
                 {{ $schedules->getCollection()->pluck('instructor_id')->unique()->count() }}
 
@@ -169,15 +164,18 @@
         <!-- Rooms -->
 
         <div
-            class="bg-white rounded-2xl
-                   border border-slate-200
-                   shadow-sm p-6">
+            class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
 
-            <p class="text-sm text-slate-500">
-                Rooms Used
-            </p>
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-slate-500">
+                    Rooms Used
+                </p>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <x-heroicon-o-building-office-2 class="h-5 w-5"/>
+                </div>
+            </div>
 
-            <h2 class="mt-2 text-3xl font-bold text-slate-800">
+            <h2 class="mt-3 text-3xl font-bold text-slate-800">
 
                 {{ $schedules->getCollection()->pluck('room_id')->unique()->count() }}
 
@@ -189,15 +187,18 @@
         <!-- Subjects -->
 
         <div
-            class="bg-white rounded-2xl
-                   border border-slate-200
-                   shadow-sm p-6">
+            class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
 
-            <p class="text-sm text-slate-500">
-                Subjects
-            </p>
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-medium text-slate-500">
+                    Subjects
+                </p>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                    <x-heroicon-o-book-open class="h-5 w-5"/>
+                </div>
+            </div>
 
-            <h2 class="mt-2 text-3xl font-bold text-slate-800">
+            <h2 class="mt-3 text-3xl font-bold text-slate-800">
 
                 {{ $schedules->getCollection()->pluck('subject_code')->unique()->count() }}
 
@@ -213,9 +214,7 @@
     <!-- ===================================================== -->
 
     <div
-        class="bg-white rounded-2xl
-               border border-slate-200
-               shadow-sm p-5 mb-6">
+        class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
 
         <label
             for="scheduleSearch"
@@ -229,11 +228,7 @@
             id="scheduleSearch"
             type="text"
             placeholder="Search instructor, subject, room, day..."
-            class="w-full rounded-xl
-                   border border-slate-300
-                   px-5 py-3
-                   focus:border-[#0E4C6B]
-                   focus:ring-[#0E4C6B]">
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
 
     </div>
 
@@ -243,47 +238,53 @@
     <!-- ===================================================== -->
 
     <div
-        class="bg-white rounded-2xl
-               border border-slate-200
-               shadow-sm overflow-hidden">
+        class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
 
         <div class="overflow-x-auto">
 
-            <table class="w-full min-w-[1150px]">
+            <table class="w-full min-w-[1450px]">
 
-                <thead class="bg-[#0E4C6B] text-white">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
 
                     <tr>
 
-                        <th class="px-6 py-4 text-left">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide">
                             Instructor
                         </th>
 
-                        <th class="px-6 py-4 text-left">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide">
                             Subject
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
+                            Units
+                        </th>
+
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
+                            Enrolled
+                        </th>
+
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Room
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Day
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Time
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Semester
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             School Year
                         </th>
 
-                        <th class="px-6 py-4 text-center">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Action
                         </th>
 
@@ -297,8 +298,7 @@
                     @forelse($schedules as $schedule)
 
                         <tr
-                            class="border-b border-slate-100
-                                   hover:bg-slate-50 transition">
+                            class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors duration-150">
 
 
                             <!-- Instructor -->
@@ -307,20 +307,18 @@
 
                                 @if($schedule->instructor)
 
-                                    <p class="font-semibold text-slate-800">
+                                    <p class="text-sm font-semibold text-slate-800">
 
                                         {{ $schedule->instructor->first_name }}
                                         {{ $schedule->instructor->last_name }}
 
                                     </p>
 
-                                @else
-
-                                    <span class="text-red-500">
-                                        Instructor not found
-                                    </span>
-
-                                @endif
+                               @else
+    <span class="text-amber-600 text-sm">
+        Unassigned Instructor
+    </span>
+@endif
 
                             </td>
 
@@ -331,10 +329,11 @@
 
                                 <span
                                     class="inline-flex
-                                           bg-blue-100
+                                           bg-blue-50
                                            text-blue-700
                                            px-3 py-1
                                            rounded-full
+                                           border border-blue-100
                                            text-xs font-semibold">
 
                                     {{ $schedule->subject_code }}
@@ -343,11 +342,37 @@
 
                                 @if($schedule->subject_name)
 
-                                    <p class="mt-2 text-slate-600">
+                                    <p class="mt-2 text-sm text-slate-600 max-w-xs">
                                         {{ $schedule->subject_name }}
                                     </p>
 
                                 @endif
+
+                            </td>
+
+
+                            <!-- Units -->
+
+                            <td class="px-6 py-5 text-center">
+
+                                <span class="text-sm font-medium text-slate-700">
+                                    @if($schedule->units !== null)
+                                        {{ rtrim(rtrim(number_format((float) $schedule->units, 2, '.', ''), '0'), '.') }}
+                                    @else
+                                        —
+                                    @endif
+                                </span>
+
+                            </td>
+
+
+                            <!-- Enrolled -->
+
+                            <td class="px-6 py-5 text-center">
+
+                                <span class="text-sm font-medium text-slate-700">
+                                    {{ $schedule->enrolled ?? '—' }}
+                                </span>
 
                             </td>
 
@@ -360,7 +385,7 @@
 
                                     <span
                                         class="inline-flex
-                                               bg-green-100
+                                               bg-green-50
                                                text-green-700
                                                px-3 py-1
                                                rounded-full
@@ -370,19 +395,17 @@
 
                                     </span>
 
-                                    <p class="mt-2 text-sm text-slate-500">
+                                    <p class="mt-2 text-xs text-slate-500">
 
                                         Room {{ $schedule->room->room_number }}
 
                                     </p>
 
-                                @else
-
-                                    <span class="text-red-500 text-sm">
-                                        Room not found
-                                    </span>
-
-                                @endif
+                             @else
+    <span class="text-amber-600 text-sm">
+        Unassigned Room
+    </span>
+@endif
 
                             </td>
 
@@ -393,10 +416,11 @@
 
                                 <span
                                     class="inline-flex
-                                           bg-yellow-100
+                                           bg-yellow-50
                                            text-yellow-700
                                            px-3 py-1
                                            rounded-full
+                                           border border-blue-100
                                            text-xs font-semibold">
 
                                     {{ $schedule->day }}
@@ -415,10 +439,11 @@
 
                                 <span
                                     class="inline-flex
-                                           bg-indigo-100
+                                           bg-indigo-50
                                            text-indigo-700
                                            px-3 py-1
                                            rounded-full
+                                           border border-blue-100
                                            text-xs font-semibold">
 
                                     {{ date('g:i A', strtotime($schedule->start_time)) }}
@@ -438,10 +463,11 @@
 
                                 <span
                                     class="inline-flex
-                                           bg-purple-100
+                                           bg-purple-50
                                            text-purple-700
                                            px-3 py-1
                                            rounded-full
+                                           border border-blue-100
                                            text-xs font-semibold">
 
                                     {{ $schedule->semester }}
@@ -461,6 +487,7 @@
                                            text-slate-700
                                            px-3 py-1
                                            rounded-full
+                                           border border-blue-100
                                            text-xs font-semibold">
 
                                     {{ $schedule->school_year }}
@@ -470,36 +497,33 @@
                             </td>
 
 
-                            <!-- Delete -->
+                        <!-- Delete -->
+<td class="px-6 py-5 text-center">
 
-                            <td class="px-6 py-5 text-center">
+    @if(auth()->user()->hasAdminPermission('schedule_management', 'full'))
 
-                                <form
-                                    action="{{ route('admin.schedules.destroy', $schedule) }}"
-                                    method="POST"
-                                    class="delete-schedule-form inline">
+        <form
+            action="{{ route('admin.schedules.destroy', $schedule) }}"
+            method="POST"
+            class="delete-schedule-form inline">
 
-                                    @csrf
+            @csrf
+            @method('DELETE')
 
-                                    @method('DELETE')
+            <button type="submit"
+                class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition">
+                Delete
+            </button>
 
-                                    <button
-                                        type="submit"
-                                        class="bg-red-600
-                                               hover:bg-red-700
-                                               text-white
-                                               px-4 py-2
-                                               rounded-lg
-                                               text-sm
-                                               transition">
+        </form>
 
-                                        Delete
+    @else
 
-                                    </button>
+        <span class="text-xs text-slate-400">View only</span>
 
-                                </form>
+    @endif
 
-                            </td>
+</td>
 
                         </tr>
 
@@ -508,7 +532,7 @@
                         <tr>
 
                             <td
-                                colspan="8"
+                                colspan="10"
                                 class="px-6 py-16
                                        text-center
                                        text-slate-500">
@@ -568,7 +592,7 @@
 
     <div
         class="w-full max-w-lg
-               rounded-2xl
+               rounded-xl
                bg-white
                shadow-2xl
                overflow-hidden">
@@ -584,7 +608,7 @@
 
                 <div>
 
-                    <h2 class="text-2xl font-bold text-slate-800">
+                    <h2 class="text-xl font-bold text-slate-800">
                         Import Schedule
                     </h2>
 
@@ -614,133 +638,121 @@
 
         <!-- Import Form -->
 
-        <form
-            action="{{ route('admin.schedules.import') }}"
-            method="POST"
-            enctype="multipart/form-data"
-            class="p-6">
+       
+<form
+    action="{{ route('admin.schedules.import') }}"
+    method="POST"
+    enctype="multipart/form-data"
+    class="p-6">
 
-            @csrf
+    @csrf
 
+    {{-- Semester --}}
+    <div class="mb-5">
+        <label for="importSemester"
+               class="block text-sm font-semibold text-slate-700 mb-2">
+            Semester
+        </label>
 
-            <!-- File -->
+        <select
+            id="importSemester"
+            name="semester"
+            required
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
 
-            <div>
+            <option value="">Select Semester</option>
+            <option value="1st Semester">1st Semester</option>
+            <option value="2nd Semester">2nd Semester</option>
 
-                <label
-                    for="scheduleFile"
-                    class="block
-                           text-sm
-                           font-semibold
-                           text-slate-700
-                           mb-2">
+        </select>
+    </div>
 
-                    Schedule File
+    {{-- School Year --}}
+    <div class="mb-5">
+        <label for="importSchoolYear"
+               class="block text-sm font-semibold text-slate-700 mb-2">
+            School Year
+        </label>
 
-                </label>
+        <input
+            type="text"
+            id="importSchoolYear"
+            name="school_year"
+            placeholder="Example: 2026-2027"
+            maxlength="20"
+            required
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
+    </div>
 
-                <input
-                    id="scheduleFile"
-                    type="file"
-                    name="file"
-                    accept=".xlsx,.xls,.csv"
-                    required
-                    class="block w-full
-                           rounded-xl
-                           border border-slate-300
-                           p-3
-                           focus:border-[#0E4C6B]
-                           focus:ring-[#0E4C6B]">
+    {{-- Schedule File --}}
+    <div>
+        <label
+            for="scheduleFile"
+            class="block text-sm font-semibold text-slate-700 mb-2">
+            Registrar Schedule File
+        </label>
 
-            </div>
+        <input
+            id="scheduleFile"
+            type="file"
+            name="file"
+            accept=".xlsx,.xls,.csv"
+            required
+            class="block w-full rounded-xl border border-slate-300 p-3 focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
 
+        <p class="mt-2 text-xs text-slate-500">
+            Accepted formats: Excel (.xlsx, .xls) and CSV (.csv). Maximum size: 10 MB.
+        </p>
+    </div>
 
-            <!-- Format Information -->
+    {{-- Expected Format --}}
+    <div class="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
 
-            <div
-                class="mt-6
-                       rounded-xl
-                       bg-blue-50
-                       border border-blue-100
-                       p-4">
+        <p class="font-semibold text-slate-700 mb-3">
+            Expected Registrar Excel Columns
+        </p>
 
-                <p class="font-semibold text-slate-700 mb-3">
-                    Required Excel Columns
-                </p>
+        <div class="grid grid-cols-2 gap-y-2 text-sm text-slate-600">
+            <p>• Code</p>
+            <p>• Name</p>
+            <p>• Subject Title</p>
+            <p>• Units</p>
+            <p>• Start</p>
+            <p>• End</p>
+            <p>• Days</p>
+            <p>• Classroom</p>
+            <p>• Instructor</p>
+            <p>• Enrolled</p>
+        </div>
 
-                <div class="grid grid-cols-2 gap-y-2
-                            text-sm text-slate-600">
+        <p class="mt-3 text-xs text-slate-500">
+            Semester and School Year are entered above and do not need to be included in the Excel file.
+        </p>
+    </div>
 
-                    <p>• Employee ID</p>
+    {{-- Buttons --}}
+    <div class="mt-8 flex flex-col-reverse sm:flex-row justify-end gap-3">
 
-                    <p>• Subject Code</p>
+        <button
+            type="button"
+            id="closeImportSchedule"
+            class="w-full sm:w-auto rounded-xl border border-slate-300 px-5 py-2.5 hover:bg-slate-100 transition">
+            Cancel
+        </button>
 
-                    <p>• Subject Name</p>
-
-                    <p>• Room</p>
-
-                    <p>• Day</p>
-
-                    <p>• Start Time</p>
-
-                    <p>• End Time</p>
-
-                    <p>• Semester</p>
-
-                    <p>• School Year</p>
-
-                </div>
-
-            </div>
-
-
-            <!-- Buttons -->
-
-            <div
-                class="mt-8
-                       flex
-                       flex-col-reverse
-                       sm:flex-row
-                       justify-end
-                       gap-3">
-
-                <button
-                    type="button"
-                    id="closeImportSchedule"
-                    class="w-full sm:w-auto
-                           rounded-xl
-                           border border-slate-300
-                           px-5 py-2.5
-                           hover:bg-slate-100
-                           transition">
-
-                    Cancel
-
-                </button>
-
-
-                <button
-                    type="submit"
-                    class="w-full sm:w-auto
-                           rounded-xl
-                           bg-[#0E4C6B]
-                           px-6 py-2.5
-                           text-white
-                           font-semibold
-                           hover:bg-[#0B3D56]
-                           transition">
-
-                    Import Schedule
-
-                </button>
-
-            </div>
-
-        </form>
+        <button
+            type="submit"
+            class="w-full sm:w-auto rounded-xl bg-[#0E4C6B] px-6 py-2.5 text-white font-semibold hover:bg-[#0B3D56] transition">
+            Continue to Preview
+        </button>
 
     </div>
 
+</form>
+
+   </div>
 </div>
+
 
 
 <!-- ========================================================= -->
@@ -756,7 +768,7 @@
 
     <div
         class="w-full max-w-lg
-               rounded-2xl
+               rounded-xl
                bg-white
                shadow-2xl
                overflow-hidden">
@@ -767,7 +779,7 @@
             <div class="flex items-start justify-between gap-4">
 
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800">
+                    <h2 class="text-xl font-bold text-slate-800">
                         Delete Schedules
                     </h2>
 

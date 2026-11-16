@@ -11,15 +11,15 @@ class AdminPermissions
     ];
 
     public const FEATURES = [
-        'dashboard' => 'Dashboard',
-        'user_management' => 'User Management',
-        'schedule_management' => 'Schedule Management',
-        'buildings' => 'Buildings',
-        'rooms' => 'Rooms',
-        'campus_map' => 'Campus Map',
-        'reports' => 'Reports',
-        'activity_logs' => 'Activity Logs',
-    ];
+    'dashboard' => 'Dashboard',
+    'user_management' => 'User Management',
+    'schedule_management' => 'Schedule Management',
+    'buildings' => 'Buildings',
+    'rooms' => 'Rooms',
+    'campus_map' => 'Campus Map',
+    'room_monitoring' => 'Room Monitoring',
+    'reports' => 'Reports & Activity Logs',
+];
 
     public static function defaults(): array
     {

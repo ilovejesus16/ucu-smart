@@ -349,6 +349,31 @@ href="{{ route('admin.rooms.index') }}"
 </a>
 @endif
 
+            <!-- Room Monitoring -->
+            @if(auth()->user()->hasAdminPermission('room_monitoring', 'view'))
+
+            <a
+                href="{{ route('admin.room-monitoring') }}"
+                @click="open = false"
+                class="flex items-center gap-3
+                       px-4 py-3
+                       rounded-xl
+                       transition
+
+                       {{ request()->routeIs('admin.room-monitoring*')
+                            ? 'bg-[#0E4C6B] shadow-lg'
+                            : 'hover:bg-[#163A74]' }}">
+
+                <x-heroicon-o-clipboard-document-check
+                    class="w-6 h-6 flex-shrink-0"/>
+
+                <span>
+                    Room Monitoring
+                </span>
+
+            </a>
+            @endif
+
 <!-- Reports -->
 @if(auth()->user()->hasAdminPermission('reports', 'view'))
 

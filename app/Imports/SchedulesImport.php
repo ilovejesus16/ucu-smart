@@ -1,720 +1,654 @@
 <?php
 
+
+
 namespace App\Imports;
 
+
+
 use App\Models\Room;
+
 use App\Models\User;
+
 use App\Models\Schedule;
+
 use Illuminate\Support\Collection;
+
 use Maatwebsite\Excel\Concerns\ToCollection;
+
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
+
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+
 use Carbon\Carbon;
 
+
+
 class SchedulesImport implements ToCollection, WithHeadingRow
+
 {
-    /**
-     * Rows prepared for preview.
-     */
+
     public array $schedules = [];
 
-    /**
-     * Process Excel rows.
-     */
+    protected Collection $roomCache;
+
+    protected ?string $semester;
+
+    protected ?string $schoolYear;
+
+
+
+    public function __construct(
+
+        ?string $semester = null,
+
+        ?string $schoolYear = null
+
+    ) {
+
+        $this->semester = $semester;
+
+        $this->schoolYear = $schoolYear;
+
+    }
+
+
+
     public function collection(Collection $rows)
+
     {
+        // Cache rooms once for this import so each row does not query them again.
+        $this->roomCache = Room::all();
+
         foreach ($rows as $row) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Skip Completely Empty Rows
-            |--------------------------------------------------------------------------
-            */
+            $code = trim((string) ($row['code'] ?? ''));
 
-            if (
-                empty($row['employee_id']) &&
-                empty($row['subject_code']) &&
-                empty($row['subject_name']) &&
-                empty($row['room'])
-            ) {
-                continue;
-            }
+            $section = trim((string) ($row['name'] ?? ''));
 
+            $subject = trim((string) ($row['subject_title'] ?? ''));
 
-            /*
-            |--------------------------------------------------------------------------
-            | Read Excel Values
-            |--------------------------------------------------------------------------
-            */
 
-            $employeeId = trim(
-                (string) ($row['employee_id'] ?? '')
-            );
 
-            $subjectCode = trim(
-                (string) ($row['subject_code'] ?? '')
-            );
+            $classroom = trim((string) ($row['classroom'] ?? ''));
 
-            $subjectName = trim(
-                (string) ($row['subject_name'] ?? '')
-            );
+            $employeeId = trim((string) ($row['instructor'] ?? ''));
 
-            $roomValue = trim(
-                (string) ($row['room'] ?? '')
-            );
 
-            $day = trim(
-                (string) ($row['day'] ?? '')
-            );
 
-            $semester = trim(
-                (string) ($row['semester'] ?? '')
-            );
+            $day = $this->normalizeDays($row['days'] ?? '');
 
-            $schoolYear = trim(
-                (string) ($row['school_year'] ?? '')
-            );
+            $start = $this->convertTime($row['start'] ?? null);
 
+            $end = $this->convertTime($row['end'] ?? null);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Missing Required Information
-            |--------------------------------------------------------------------------
-            */
 
-            if (
-                $employeeId === '' ||
-                $subjectCode === '' ||
-                $subjectName === '' ||
-                $roomValue === '' ||
-                $day === '' ||
-                empty($row['start_time']) ||
-                empty($row['end_time']) ||
-                $semester === '' ||
-                $schoolYear === ''
-            ) {
 
-                $this->schedules[] = [
+            $room = $classroom !== ''
 
-                    'employee_id' => $employeeId,
+                ? $this->findRoom($classroom)
 
-                    'instructor_id' => null,
+                : null;
 
-                    'instructor_name' => null,
 
-                    'subject_code' => $subjectCode,
 
-                    'subject_name' => $subjectName,
+            $instructor = $employeeId !== ''
 
-                    'room_input' => $roomValue,
+                ? User::where('employee_id', $employeeId)
 
-                    'room_id' => null,
+                    ->where('role', 'instructor')
 
-                    'room_name' => null,
+                    ->where('status', 'active')
 
-                    'room_number' => null,
+                    ->first()
 
-                    'day' => $day,
+                : null;
 
-                    'start_time' => null,
 
-                    'end_time' => null,
 
-                    'semester' => $semester,
-
-                    'school_year' => $schoolYear,
-
-                    'status' => 'invalid',
-
-                    'remarks' => 'Missing required information.',
-
-                ];
-
-                continue;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Find Instructor
-            |--------------------------------------------------------------------------
-            */
-
-            $instructor = User::where(
-                'employee_id',
-                $employeeId
-            )
-                ->where(
-                    'role',
-                    'instructor'
-                )
-                ->where(
-                    'status',
-                    'active'
-                )
-                ->first();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Instructor Not Found
-            |--------------------------------------------------------------------------
-            */
-
-            if (!$instructor) {
-
-                $this->schedules[] = [
-
-                    'employee_id' => $employeeId,
-
-                    'instructor_id' => null,
-
-                    'instructor_name' => null,
-
-                    'subject_code' => $subjectCode,
-
-                    'subject_name' => $subjectName,
-
-                    'room_input' => $roomValue,
-
-                    'room_id' => null,
-
-                    'room_name' => null,
-
-                    'room_number' => null,
-
-                    'day' => $day,
-
-                    'start_time' => null,
-
-                    'end_time' => null,
-
-                    'semester' => $semester,
-
-                    'school_year' => $schoolYear,
-
-                    'status' => 'invalid',
-
-                    'remarks' =>
-                        'Instructor not found or inactive.',
-
-                ];
-
-                continue;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Normalize Room Number
-            |--------------------------------------------------------------------------
-            |
-            | The Rooms table stores room_number as:
-            |
-            | LA I - 101
-            | LA I - 102
-            | LA II - 108
-            | RW - 305
-            | TEC - 401
-            |
-            | But the schedule Excel may contain:
-            |
-            | LA I 102
-            | LA I 104
-            | LA II 108
-            | RW 401
-            | TEC 302
-            |
-            | Therefore we normalize the Excel value to the same format
-            | used by RoomsImport.
-            |
-            */
-
-            $normalizedRoom = $this->normalizeRoomNumber(
-                $roomValue
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Find Room
-            |--------------------------------------------------------------------------
-            */
-
-            $room = Room::whereRaw(
-                'LOWER(TRIM(room_number)) = ?',
-                [
-                    strtolower($normalizedRoom)
-                ]
-            )->first();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Room Not Found
-            |--------------------------------------------------------------------------
-            */
-
-            if (!$room) {
-
-                $this->schedules[] = [
-
-                    'employee_id' => $employeeId,
-
-                    'instructor_id' => $instructor->id,
-
-                    'instructor_name' =>
-                        $instructor->first_name . ' ' .
-                        $instructor->last_name,
-
-                    'subject_code' => $subjectCode,
-
-                    'subject_name' => $subjectName,
-
-                    'room_input' => $roomValue,
-
-                    'room_id' => null,
-
-                    'room_name' => null,
-
-                    'room_number' => $normalizedRoom,
-
-                    'day' => $day,
-
-                    'start_time' => null,
-
-                    'end_time' => null,
-
-                    'semester' => $semester,
-
-                    'school_year' => $schoolYear,
-
-                    'status' => 'invalid',
-
-                    'remarks' =>
-                        'Room not found: ' .
-                        $normalizedRoom,
-
-                ];
-
-                continue;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Convert Start Time
-            |--------------------------------------------------------------------------
-            */
-
-            try {
-
-                $startTime = $this->convertTime(
-                    $row['start_time']
-                );
-
-            } catch (\Throwable $e) {
-
-                $this->schedules[] = [
-
-                    'employee_id' => $employeeId,
-
-                    'instructor_id' => $instructor->id,
-
-                    'instructor_name' =>
-                        $instructor->first_name . ' ' .
-                        $instructor->last_name,
-
-                    'subject_code' => $subjectCode,
-
-                    'subject_name' => $subjectName,
-
-                    'room_input' => $roomValue,
-
-                    'room_id' => $room->id,
-
-                    'room_name' => $room->room_name,
-
-                    'room_number' => $room->room_number,
-
-                    'day' => $day,
-
-                    'start_time' => null,
-
-                    'end_time' => null,
-
-                    'semester' => $semester,
-
-                    'school_year' => $schoolYear,
-
-                    'status' => 'invalid',
-
-                    'remarks' => 'Invalid start time.',
-
-                ];
-
-                continue;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Convert End Time
-            |--------------------------------------------------------------------------
-            */
-
-            try {
-
-                $endTime = $this->convertTime(
-                    $row['end_time']
-                );
-
-            } catch (\Throwable $e) {
-
-                $this->schedules[] = [
-
-                    'employee_id' => $employeeId,
-
-                    'instructor_id' => $instructor->id,
-
-                    'instructor_name' =>
-                        $instructor->first_name . ' ' .
-                        $instructor->last_name,
-
-                    'subject_code' => $subjectCode,
-
-                    'subject_name' => $subjectName,
-
-                    'room_input' => $roomValue,
-
-                    'room_id' => $room->id,
-
-                    'room_name' => $room->room_name,
-
-                    'room_number' => $room->room_number,
-
-                    'day' => $day,
-
-                    'start_time' => $startTime,
-
-                    'end_time' => null,
-
-                    'semester' => $semester,
-
-                    'school_year' => $schoolYear,
-
-                    'status' => 'invalid',
-
-                    'remarks' => 'Invalid end time.',
-
-                ];
-
-                continue;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Check Existing Duplicate
-            |--------------------------------------------------------------------------
-            */
-
-            $duplicate = Schedule::where(
-                'room_id',
-                $room->id
-            )
-                ->where(
-                    'day',
-                    $day
-                )
-                ->where(
-                    'start_time',
-                    $startTime
-                )
-                ->where(
-                    'end_time',
-                    $endTime
-                )
-                ->where(
-                    'semester',
-                    $semester
-                )
-                ->where(
-                    'school_year',
-                    $schoolYear
-                )
-                ->exists();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Add Preview Row
-            |--------------------------------------------------------------------------
-            */
-
-            $this->schedules[] = [
+            $record = [
 
                 'employee_id' => $employeeId,
 
-                'instructor_id' => $instructor->id,
+                'instructor_id' => $instructor?->id,
 
-                'instructor_name' =>
-                    $instructor->first_name . ' ' .
-                    $instructor->last_name,
+                'instructor_name' => $instructor
 
-                'subject_code' => $subjectCode,
+                    ? trim($instructor->first_name . ' ' . $instructor->last_name)
 
-                'subject_name' => $subjectName,
+                    : ($employeeId ?: 'Not assigned'),
 
-                'room_input' => $roomValue,
 
-                'room_id' => $room->id,
 
-                'room_name' => $room->room_name,
+                'subject_code' => $code,
 
-                'room_number' => $room->room_number,
+                'section_name' => $section,
+
+                'subject_name' => $subject,
+
+                'units' => $this->numericValue($row['units'] ?? null),
+
+                'enrolled' => $this->integerValue($row['enrolled'] ?? null),
+
+
+
+                'room_input' => $classroom,
+
+                'room_id' => $room?->id,
+
+                'room_name' => $room?->room_name,
+
+                'room_number' => $room?->room_number,
+
+
 
                 'day' => $day,
 
-                'start_time' => $startTime,
+                'start_time' => $start,
 
-                'end_time' => $endTime,
+                'end_time' => $end,
 
-                'semester' => $semester,
 
-                'school_year' => $schoolYear,
 
-                'status' => $duplicate
-                    ? 'duplicate'
-                    : 'new',
+                'semester' => $this->semester,
 
-                'remarks' => $duplicate
-                    ? 'Schedule already exists.'
-                    : 'Ready to import.',
+                'school_year' => $this->schoolYear,
+
+
+
+                'status' => 'new',
+
+                'remarks' => [],
 
             ];
+
+
+
+            // Required information
+
+            if ($code === '' || $subject === '' || $day === '' || !$start || !$end) {
+
+                $record['status'] = 'invalid';
+
+                $record['remarks'][] = 'Missing subject code, subject title, day, or valid time.';
+
+            }
+
+
+
+            if ($start && $end && $end <= $start) {
+
+                $record['status'] = 'invalid';
+
+                $record['remarks'][] = 'End time must be later than start time.';
+
+            }
+
+
+
+            if (!$this->semester || !$this->schoolYear) {
+
+                $record['status'] = 'invalid';
+
+                $record['remarks'][] = 'Semester or school year is missing.';
+
+            }
+
+
+
+            // Room and instructor can be reviewed or assigned in the preview.
+
+            if ($classroom !== '' && !$room) {
+
+                $record['remarks'][] = "Classroom '{$classroom}' was not found.";
+
+            }
+
+
+
+            if ($employeeId !== '' && !$instructor) {
+
+                $record['remarks'][] = "Instructor ID '{$employeeId}' was not found or is inactive.";
+
+            }
+
+
+
+            if ($classroom === '') {
+
+                $record['remarks'][] = 'No classroom assigned.';
+
+            }
+
+
+
+            if ($employeeId === '') {
+
+                $record['remarks'][] = 'No instructor assigned.';
+
+            }
+
+
+
+            // Check exact duplicates and overlapping schedules.
+
+            if ($record['status'] !== 'invalid') {
+
+                $conflicts = $this->findConflicts($record);
+
+
+
+                if (!empty($conflicts)) {
+
+                    $record['status'] = 'duplicate';
+
+                    $record['remarks'] = array_merge(
+
+                        $record['remarks'],
+
+                        $conflicts
+
+                    );
+
+                }
+
+            }
+
+
+
+            $record['remarks'] = implode(' ', $record['remarks']);
+
+
+
+            $this->schedules[] = $record;
+
         }
+
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Normalize Room Number
-    |--------------------------------------------------------------------------
-    |
-    | Examples:
-    |
-    | LA I 102       -> LA I - 102
-    | LA I - 102     -> LA I - 102
-    | LA II 211      -> LA II - 211
-    | RW 401         -> RW - 401
-    | TEC 302        -> TEC - 302
-    |
-    |--------------------------------------------------------------------------
-    */
 
-    private function normalizeRoomNumber(
-        string $value
-    ): string {
+    private function findRoom(string $classroom): ?Room
 
-        $value = trim($value);
+    {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize whitespace
-        |--------------------------------------------------------------------------
-        */
-
-        $value = preg_replace(
-            '/\s+/u',
-            ' ',
-            $value
-        );
+        $normalized = $this->normalizeText($classroom);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize dash characters
-        |--------------------------------------------------------------------------
-        */
 
-        $value = str_replace(
-            ['—', '–'],
-            '-',
-            $value
-        );
+        return $this->roomCache->first(function ($room) use ($normalized) {
 
+            return $this->normalizeText($room->room_number) === $normalized
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize spaces around dash
-        |--------------------------------------------------------------------------
-        */
+                || $this->normalizeText($room->room_name) === $normalized;
 
-        $value = preg_replace(
-            '/\s*-\s*/',
-            ' - ',
-            $value
-        );
+        });
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Already in correct format
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            preg_match(
-                '/^(.+?)\s*-\s*(\d+)$/',
-                $value,
-                $matches
-            )
-        ) {
-
-            return trim($matches[1])
-                . ' - '
-                . trim($matches[2]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Excel format without dash
-        |--------------------------------------------------------------------------
-        |
-        | Example:
-        |
-        | LA I 102
-        |
-        */
-
-        if (
-            preg_match(
-                '/^(.+?)\s+(\d+)$/',
-                $value,
-                $matches
-            )
-        ) {
-
-            return trim($matches[1])
-                . ' - '
-                . trim($matches[2]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Return Original Value
-        |--------------------------------------------------------------------------
-        */
-
-        return trim($value);
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Convert Excel / Text Time
-    |--------------------------------------------------------------------------
-    */
 
-    private function convertTime(
-        $value
-    ): string {
+    private function findConflicts(array $record): array
 
-        /*
-        |--------------------------------------------------------------------------
-        | Excel Numeric Time
-        |--------------------------------------------------------------------------
-        */
+    {
 
-        if (is_numeric($value)) {
+        $messages = [];
 
-            return Carbon::instance(
-                Date::excelToDateTimeObject(
-                    $value
-                )
-            )->format('H:i:s');
+
+
+        $existingSchedules = Schedule::with('room', 'instructor')
+
+            ->where('semester', $record['semester'])
+
+            ->where('school_year', $record['school_year'])
+
+            ->get();
+
+
+
+        foreach ($existingSchedules as $existing) {
+
+            $result = $this->compareSchedules($record, $existing);
+
+
+
+            if ($result) {
+
+                $messages[] = $result;
+
+            }
+
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | String Time
-        |--------------------------------------------------------------------------
-        */
 
-        $value = trim(
-            (string) $value
+        // Also check rows already read from this uploaded file.
+
+        foreach ($this->schedules as $previous) {
+
+            if ($previous['status'] === 'invalid') {
+
+                continue;
+
+            }
+
+
+
+            $result = $this->compareRows($record, $previous);
+
+
+
+            if ($result) {
+
+                $messages[] = $result;
+
+            }
+
+        }
+
+
+
+        return array_unique($messages);
+
+    }
+
+
+
+    private function compareSchedules(array $new, Schedule $existing): ?string
+
+    {
+
+        $sameTime = $this->overlaps(
+
+            $new['start_time'],
+
+            $new['end_time'],
+
+            $existing->start_time,
+
+            $existing->end_time
+
         );
 
+
+
+        if (!$sameTime || !$this->sharesDay($new['day'], $existing->day)) {
+
+            return null;
+
+        }
+
+
+
+        if (
+
+            $new['room_id'] &&
+
+            $existing->room_id == $new['room_id']
+
+        ) {
+
+            if (
+
+                $new['subject_code'] === $existing->subject_code &&
+
+                $new['start_time'] === $existing->start_time &&
+
+                $new['end_time'] === $existing->end_time
+
+            ) {
+
+                return 'Exact duplicate of an existing schedule.';
+
+            }
+
+
+
+            return 'Room conflict: classroom is already occupied during this time.';
+
+        }
+
+
+
+        if (
+
+            $new['instructor_id'] &&
+
+            $existing->instructor_id == $new['instructor_id']
+
+        ) {
+
+            return 'Instructor conflict: instructor has another schedule during this time.';
+
+        }
+
+
+
+        return null;
+
+    }
+
+
+
+    private function compareRows(array $new, array $previous): ?string
+
+    {
+
+        if (
+
+            !$this->overlaps(
+
+                $new['start_time'],
+
+                $new['end_time'],
+
+                $previous['start_time'],
+
+                $previous['end_time']
+
+            ) ||
+
+            !$this->sharesDay($new['day'], $previous['day'])
+
+        ) {
+
+            return null;
+
+        }
+
+
+
+        if (
+
+            $new['room_id'] &&
+
+            $previous['room_id'] &&
+
+            $new['room_id'] == $previous['room_id']
+
+        ) {
+
+            return 'Room conflict with another row in this upload.';
+
+        }
+
+
+
+        if (
+
+            $new['instructor_id'] &&
+
+            $previous['instructor_id'] &&
+
+            $new['instructor_id'] == $previous['instructor_id']
+
+        ) {
+
+            return 'Instructor conflict with another row in this upload.';
+
+        }
+
+
+
+        return null;
+
+    }
+
+
+
+    private function overlaps(
+
+        ?string $startA,
+
+        ?string $endA,
+
+        ?string $startB,
+
+        ?string $endB
+
+    ): bool {
+
+        if (!$startA || !$endA || !$startB || !$endB) {
+
+            return false;
+
+        }
+
+
+
+        return $startA < $endB && $endA > $startB;
+
+    }
+
+
+
+    private function sharesDay(string $daysA, string $daysB): bool
+
+    {
+
+        $a = $this->dayTokens($daysA);
+
+        $b = $this->dayTokens($daysB);
+
+
+
+        return !empty(array_intersect($a, $b));
+
+    }
+
+
+
+    private function normalizeDays($value): string
+    {
+        $value = strtoupper(trim((string) $value));
+        $value = preg_replace('/[\\s,\\/\\-]+/', '', $value);
 
         if ($value === '') {
-
-            throw new \InvalidArgumentException(
-                'Time value is empty.'
-            );
+            return '';
         }
 
+        $tokens = [];
+        $length = strlen($value);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Common Time Formats
-        |--------------------------------------------------------------------------
-        */
+        for ($i = 0; $i < $length;) {
+            $pair = substr($value, $i, 2);
 
-        $formats = [
-
-            'H:i:s',
-
-            'H:i',
-
-            'g:i A',
-
-            'g:i a',
-
-            'h:i A',
-
-            'h:i a',
-
-        ];
-
-
-        foreach ($formats as $format) {
-
-            try {
-
-                return Carbon::createFromFormat(
-                    $format,
-                    $value
-                )->format('H:i:s');
-
-            } catch (\Throwable $e) {
-
-                // Try next format.
-
+            if ($pair === 'TH') {
+                $tokens[] = 'Th';
+                $i += 2;
+            } elseif ($pair === 'SU') {
+                $tokens[] = 'Su';
+                $i += 2;
+            } elseif (in_array($value[$i], ['M', 'T', 'W', 'F', 'S'], true)) {
+                $tokens[] = $value[$i];
+                $i++;
+            } else {
+                // Reject unknown day characters instead of silently accepting them.
+                return '';
             }
         }
 
+        return implode('', array_unique($tokens));
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Last Attempt
-        |--------------------------------------------------------------------------
-        */
+    private function dayTokens(string $days): array
+
+    {
+
+        preg_match_all('/Th|Su|[MTWFS]/i', $days, $matches);
+
+
+
+        return array_unique($matches[0]);
+
+    }
+
+
+
+    private function convertTime($value): ?string
+
+    {
+
+        if ($value === null || trim((string) $value) === '') {
+
+            return null;
+
+        }
+
+
 
         try {
 
-            return Carbon::parse(
-                $value
-            )->format('H:i:s');
+            if (is_numeric($value)) {
+
+                $date = ExcelDate::excelToDateTimeObject((float) $value);
+
+
+
+                return Carbon::instance($date)->format('H:i:s');
+
+            }
+
+
+
+            return Carbon::parse(trim((string) $value))->format('H:i:s');
 
         } catch (\Throwable $e) {
 
-            throw new \InvalidArgumentException(
-                'Invalid time format.'
-            );
+            return null;
+
         }
+
     }
+
+
+
+    private function normalizeText($value): string
+
+    {
+
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $value)));
+
+    }
+
+
+
+    private function numericValue($value): ?float
+
+    {
+
+        return is_numeric($value) ? (float) $value : null;
+
+    }
+
+
+
+    private function integerValue($value): ?int
+
+    {
+
+        return is_numeric($value) ? (int) $value : null;
+
+    }
+
 }

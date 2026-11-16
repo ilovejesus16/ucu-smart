@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\AdminPermission;
+use App\Support\AdminPermissions;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use App\Imports\StudentsImport;
 use App\Imports\InstructorsImport;
@@ -470,6 +473,10 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
+        if ($user->role === 'admin') {
+            $user->load('adminPermission');
+        }
+
         return response()->json($user);
     }
 
@@ -478,27 +485,61 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $validated = $request->validate([
+        $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'status' => 'required|in:active,pending,rejected',
             'department' => 'nullable|string|max:255',
-        ]);
+        ];
 
-        $user->first_name = $validated['first_name'];
-        $user->last_name = $validated['last_name'];
-        $user->email = $validated['email'];
-        $user->status = $validated['status'];
-
-        // Store in the correct field depending on the user's role.
-        if ($user->role === 'student') {
-            $user->course = $validated['department'];
-        } else {
-            $user->department = $validated['department'];
+        if ($user->role === 'admin') {
+            $rules['permissions'] = 'required|array';
+            $rules['permissions.*'] = Rule::in(array_keys(AdminPermissions::LEVELS));
         }
 
-        $user->save();
+        $validated = $request->validate($rules);
+
+        if ($user->role === 'admin') {
+            $unknownFeatures = array_diff(
+                array_keys($validated['permissions']),
+                array_keys(AdminPermissions::FEATURES)
+            );
+
+            if (!empty($unknownFeatures)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'permissions' => 'One or more administrator permissions are invalid.',
+                ]);
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $validated) {
+            $user->first_name = $validated['first_name'];
+            $user->last_name = $validated['last_name'];
+            $user->email = $validated['email'];
+            $user->status = $validated['status'];
+
+            // Preserve the existing course/department behavior.
+            if ($user->role === 'student') {
+                $user->course = $validated['department'] ?? null;
+            } else {
+                $user->department = $validated['department'] ?? null;
+            }
+
+            $user->save();
+
+            if ($user->role === 'admin') {
+                $permissions = array_replace(
+                    AdminPermissions::defaults(),
+                    $validated['permissions']
+                );
+
+                AdminPermission::updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['permissions' => $permissions]
+                );
+            }
+        });
 
         $this->logActivity(
             'Updated',
@@ -538,8 +579,21 @@ public function store(Request $request)
 
         // Permissions are accepted only for admin accounts.
         'permissions' => 'required_if:role,admin|array',
-        'permissions.*' => 'in:none,view,full',
+        'permissions.*' => Rule::in(array_keys(AdminPermissions::LEVELS)),
     ]);
+
+    if ($validated['role'] === 'admin') {
+        $unknownFeatures = array_diff(
+            array_keys($validated['permissions']),
+            array_keys(AdminPermissions::FEATURES)
+        );
+
+        if (!empty($unknownFeatures)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'permissions' => 'One or more administrator permissions are invalid.',
+            ]);
+        }
+    }
 
     // Determine username.
     if ($validated['role'] === 'student') {
@@ -576,7 +630,7 @@ public function store(Request $request)
     if ($user->role === 'admin') {
         \App\Models\AdminPermission::updateOrCreate(
             ['user_id' => $user->id],
-            ['permissions' => $validated['permissions']]
+            ['permissions' => array_replace(AdminPermissions::defaults(), $validated['permissions'])]
         );
     }
 

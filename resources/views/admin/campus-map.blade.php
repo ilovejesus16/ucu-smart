@@ -20,14 +20,27 @@
         'restroom_count' => $building->restroom_count,
         'function_room_count' => $building->function_room_count,
 
-        'rooms' => $building->rooms->map(function ($room) {
+        
+'rooms' => $building->rooms->map(function ($room) {
+    return [
+        'id' => $room->id,
+        'number' => $room->room_number,
+        'name' => $room->room_name,
+        'floor' => $room->floor,
+
+        'college_assignments' => $room->collegeAssignments->map(function ($assignment) {
             return [
-                'id' => $room->id,
-                'number' => $room->room_number,
-                'name' => $room->room_name,
-                'floor' => $room->floor,
+                'college_code' => $assignment->college->college_code,
+                'college_name' => $assignment->college->college_name,
+                'color' => $assignment->college->color,
+                'is_primary' => $assignment->is_primary,
+                'room_type' => $assignment->room_type,
+                'remarks' => $assignment->remarks,
             ];
         })->values(),
+    ];
+})->values(),
+
     ];
 })->values()) }}"
     class="mx-auto max-w-[1600px] space-y-1"
@@ -99,6 +112,32 @@
                 </div>
             </div>
 
+
+{{-- MAP DISPLAY MODE --}}
+<div class="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+    <button
+        type="button"
+        @click="mapMode = 'normal'; selectedCollege = null"
+        class="rounded-md px-3 py-2 text-xs font-semibold transition"
+        :class="mapMode === 'normal'
+            ? 'bg-[#0E2958] text-white shadow-sm'
+            : 'text-slate-600 hover:bg-white'"
+    >
+        Normal
+    </button>
+
+    <button
+        type="button"
+        @click="mapMode = 'college'; selectedCollege = null"
+        class="rounded-md px-3 py-2 text-xs font-semibold transition"
+        :class="mapMode === 'college'
+            ? 'bg-[#0E2958] text-white shadow-sm'
+            : 'text-slate-600 hover:bg-white'"
+    >
+        By College
+    </button>
+</div>
+
             {{-- SELECTED MARKER SIZE CONTROLS --}}
             <div x-show="editMode && selectedMarkerId !== null"
                  x-cloak
@@ -141,7 +180,11 @@
                         class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold hover:bg-gray-100">
                     Deselect
                 </button>
-            </div>
+                </div>
+
+
+{{-- COLLEGE COLOR LEGEND --}}
+
 
             {{-- MAP VIEWPORT --}}
             <div
@@ -153,9 +196,64 @@
                 @wheel.prevent="handleWheelZoom($event)"
                 class="relative w-full overflow-hidden select-none bg-[#EAF0F6]"
                 :class="panning ? 'cursor-grabbing' : 'cursor-grab'"
-                style="height: 700px; touch-action: none; background-color: #EAF0F6; background-image: linear-gradient(rgba(14, 41, 88, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(14, 41, 88, 0.055) 1px, transparent 1px); background-size: 28px 28px;"
+                style="height: 620px; touch-action: none; background-color: #EAF0F6; background-image: linear-gradient(rgba(14, 41, 88, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(14, 41, 88, 0.055) 1px, transparent 1px); background-size: 28px 28px;"
             >
+
+{{-- FLOATING COLLEGE LEGEND --}}
+<div
+    x-show="mapMode === 'college'"
+    x-cloak
+    @pointerdown.stop
+    @click.stop
+    class="absolute top-4 right-4 z-[100] w-52 max-h-[85%] overflow-y-auto rounded-xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm"
+>
+    <div class="mb-3 flex items-center justify-between gap-2">
+        <h3 class="text-sm font-bold text-[#0E2958]">
+            College Legend
+        </h3>
+
+        <button
+            type="button"
+            @click="selectedCollege = null"
+            class="text-xs font-semibold text-[#0E4C6B] hover:underline"
+        >
+            Show All
+        </button>
+    </div>
+
+    <div class="space-y-2">
+        @foreach($colleges as $college)
+            <button
+                type="button"
+                @click="selectedCollege = selectedCollege === @js($college->college_code)
+                    ? null
+                    : @js($college->college_code)"
+                class="flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-xs font-semibold transition hover:bg-slate-50"
+                :class="selectedCollege === @js($college->college_code)
+    ? 'ring-2 ring-amber-300 ring-offset-1 bg-amber-50'
+    : 'opacity-80 hover:opacity-100'"
+                :style="`border-color: {{ $college->color }}; color: {{ $college->color }};`"
+            >
+                <span
+                    class="h-3 w-3 shrink-0 rounded-full"
+                    style="background-color: {{ $college->color }}"
+                ></span>
+
+                {{ $college->college_code }}
+
+                <span
+                    x-show="selectedCollege === @js($college->college_code)"
+                    class="ml-auto"
+                >
+                    ✓
+                </span>
+            </button>
+        @endforeach
+    </div>
+</div>
+
                 <div
+                
                     x-ref="canvas"
                     class="absolute left-1/2 top-1/2 w-[700px] max-w-none"
                     :style="`
@@ -193,10 +291,12 @@
                                 <div
                                     class="rounded-full bg-[#0E4C6B] border-2 shadow-lg flex items-center justify-center text-white font-extrabold transition"
                                     :class="[
-                                        editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
-                                        selected ? 'border-amber-300 ring-4 ring-amber-300/60' : 'border-white'
-                                    ]"
-                                    :style="`width:${size}px;height:${size}px;font-size:${Math.max(3, Math.round(size * 0.36))}px;`"
+    editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+    (selected || isCollegeHighlighted())
+        ? 'border-amber-300 ring-4 ring-amber-300/70'
+        : 'border-white'
+]"
+                                    :style="markerStyle()"
                                     :title="label"
                                 >
                                     <span x-text="number"></span>
@@ -330,9 +430,9 @@
             <span x-text="selectedLocation.building.function_room_count ?? ''"></span>
         </p>
         <p>
-            <span class="font-semibold text-slate-700">Description:</span>
-            <span x-text="selectedLocation.building.description || ''"></span>
-        </p>
+    <span class="font-semibold text-slate-700">Others:</span>
+    <span x-text="selectedLocation.building.description || ''"></span>
+</p>
     </div>
 
     <form
@@ -409,7 +509,7 @@
         </div>
 
         <div>
-            <label class="mb-1 block text-xs font-semibold text-slate-700">Description</label>
+            <label class="mb-1 block text-xs font-semibold text-slate-700">Others (Offices / Facilities)</label>
             <textarea name="description" rows="3" maxlength="5000"
                 x-text="selectedLocation.building.description || ''"
                 class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-[#0E2958] focus:ring-1 focus:ring-[#0E2958]"></textarea>
@@ -436,16 +536,53 @@
                                 <template x-if="selectedLocation.building.rooms.length === 0">
                                     <p class="text-sm text-gray-500">No rooms are recorded for this building.</p>
                                 </template>
-                                <template x-for="room in selectedLocation.building.rooms" :key="room.id">
-                                    <div class="border border-gray-200 rounded-lg p-3">
-                                        <p class="font-semibold text-sm text-[#0E2958]"
-                                           x-text="room.number || room.name || ('Room ID ' + room.id)"></p>
-                                        <p x-show="room.name && room.number && room.name !== room.number"
-                                           class="text-sm text-gray-600 mt-1" x-text="room.name"></p>
-                                        <p class="text-xs text-gray-500 mt-1"
-                                           x-text="'Floor: ' + (room.floor ?? 'Not specified')"></p>
-                                    </div>
-                                </template>
+                                
+<template x-for="room in selectedLocation.building.rooms" :key="room.id">
+    <div class="border border-gray-200 rounded-lg p-3">
+        <p class="font-semibold text-sm text-[#0E2958]"
+           x-text="room.number || room.name || ('Room ID ' + room.id)"></p>
+
+        <p x-show="room.name && room.number && room.name !== room.number"
+           class="text-sm text-gray-600 mt-1"
+           x-text="room.name"></p>
+
+        <p class="text-xs text-gray-500 mt-1"
+           x-text="'Floor: ' + (room.floor ?? 'Not specified')"></p>
+
+        <div class="mt-3"
+             x-show="room.college_assignments && room.college_assignments.length > 0">
+
+            <p class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+                Assigned Colleges
+            </p>
+
+            <div class="flex flex-wrap gap-2">
+                <template x-for="assignment in room.college_assignments"
+                          :key="assignment.college_code">
+
+                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                          :style="`background-color: ${assignment.color}18; color: ${assignment.color}; border: 1px solid ${assignment.color}55;`">
+
+                        <span class="h-2 w-2 rounded-full"
+                              :style="`background-color: ${assignment.color};`"></span>
+
+                        <span x-text="assignment.college_code"></span>
+
+                        <span class="text-[10px] opacity-75"
+                              x-text="assignment.is_primary ? 'Primary' : 'Shared'"></span>
+                    </span>
+
+                </template>
+            </div>
+        </div>
+
+        <p x-show="!room.college_assignments || room.college_assignments.length === 0"
+           class="mt-2 text-xs text-gray-400 italic">
+            No college assignment recorded.
+        </p>
+    </div>
+</template>
+
                             </div>
                         </div>
                     </template>
@@ -684,7 +821,10 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('campusMapEditor', () => ({
         zoom: 1,
-        editMode: false,
+editMode: false,
+
+mapMode: 'normal',
+selectedCollege: null,
         panX: 0,
         panY: 0,
         panning: false,
@@ -725,7 +865,43 @@ document.addEventListener('alpine:init', () => {
             ->filter(fn ($location) => $location->map_x !== null && $location->map_y !== null)
             ->pluck('id')
             ->values()),
+buildingForMarker(number) {
+    const code = this.buildingMap[Number(number)];
 
+    if (!code) return null;
+
+    return this.buildings.find(building =>
+        (building.code || building.building_code) === code
+    ) || null;
+},
+
+markerCollegeAssignments(number) {
+    const building = this.buildingForMarker(number);
+
+    if (!building) return [];
+
+    const assignments = (building.rooms || [])
+        .flatMap(room => room.college_assignments || [])
+        .filter(assignment => assignment.is_primary === true);
+
+    return [...new Map(
+        assignments.map(assignment => [
+            assignment.college_code,
+            assignment
+        ])
+    ).values()];
+},
+
+markerCollegeColors(number) {
+    return this.markerCollegeAssignments(number)
+        .map(assignment => assignment.color)
+        .filter(Boolean);
+},
+
+markerHasCollege(number, collegeCode) {
+    return this.markerCollegeAssignments(number)
+        .some(assignment => assignment.college_code === collegeCode);
+},
         init() {
             this.newMarkerMoveHandler = event => this.moveNewMarker(event);
             this.newMarkerUpHandler = event => this.dropNewMarker(event);
@@ -1330,181 +1506,225 @@ this.selectedLocation = {
         }
     }));
 
-    Alpine.data(
-        'campusMarker',
-        (id, number, initialX, initialY, initialSize = 28, label = '') => ({
-            id: Number(id),
-            number: Number(number),
-            x: Number(initialX),
-            y: Number(initialY),
-            size: Number(initialSize),
-            label: label,
+    
+Alpine.data(
+    'campusMarker',
+    (id, number, initialX, initialY, initialSize = 28, label = '') => ({
+        id: Number(id),
+        number: Number(number),
+        x: Number(initialX),
+        y: Number(initialY),
+        size: Number(initialSize),
+        label: label,
 
-            selected: false,
-            dragging: false,
+        selected: false,
+        dragging: false,
 
-            startMouseX: 0,
-            startMouseY: 0,
-            startX: 0,
-            startY: 0,
+        startMouseX: 0,
+        startMouseY: 0,
+        startX: 0,
+        startY: 0,
 
-            moveHandler: null,
-            upHandler: null,
+        moveHandler: null,
+        upHandler: null,
 
-            init() {
-                this.moveHandler = event => this.moveMarker(event);
-                this.upHandler = () => this.stopMarkerDrag();
-            },
+        isCollegeHighlighted() {
+            const editor = this.editor();
 
-            editor() {
-                let element = this.$root.parentElement;
+            return !!(
+                editor &&
+                editor.mapMode === 'college' &&
+                editor.selectedCollege &&
+                editor.markerHasCollege(this.number, editor.selectedCollege)
+            );
+        },
 
-                while (element) {
-                    if (
-                        element.hasAttribute('x-data') &&
-                        element.getAttribute('x-data').startsWith('campusMapEditor')
-                    ) {
-                        return Alpine.$data(element);
-                    }
+        markerStyle() {
+            const editor = this.editor();
 
-                    element = element.parentElement;
-                }
-
-                return null;
-            },
-
-            selectMarker() {
-                const editor = this.editor();
-
-                if (!editor || !editor.editMode) return;
-
-                editor.selectMarker(
-                    this.id,
-                    this.label,
-                    this.size
-                );
-            },
-
-            handleClick() {
-                const editor = this.editor();
-                if (!editor) return;
-                if (editor.editMode) {
-                    this.selectMarker();
-                } else {
-                    editor.openLocation(this.number, this.label);
-                }
-            },
-
-            startMarkerDrag(event) {
-                const editor = this.editor();
-
-                if (
-                    !editor ||
-                    !editor.editMode ||
-                    event.button !== 0 ||
-                    editor.saving
-                ) {
-                    return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-
-                this.selectMarker();
-
-                this.dragging = true;
-
-                this.startMouseX = event.clientX;
-                this.startMouseY = event.clientY;
-
-                this.startX = this.x;
-                this.startY = this.y;
-
-                document.removeEventListener(
-                    'pointermove',
-                    this.moveHandler
-                );
-                document.removeEventListener(
-                    'pointerup',
-                    this.upHandler
-                );
-                document.removeEventListener(
-                    'pointercancel',
-                    this.upHandler
-                );
-
-                document.addEventListener(
-                    'pointermove',
-                    this.moveHandler
-                );
-
-                document.addEventListener(
-                    'pointerup',
-                    this.upHandler,
-                    { once: true }
-                );
-
-                document.addEventListener(
-                    'pointercancel',
-                    this.upHandler,
-                    { once: true }
-                );
-            },
-
-            moveMarker(event) {
-                if (!this.dragging) return;
-
-                const editor = this.editor();
-
-                if (!editor || !editor.editMode) {
-                    this.stopMarkerDrag();
-                    return;
-                }
-
-                const canvas = editor.$refs.canvas;
-                const rect = canvas.getBoundingClientRect();
-
-                if (rect.width <= 0 || rect.height <= 0) return;
-
-                this.x = Math.max(
-                    0,
-                    Math.min(
-                        100,
-                        this.startX +
-                        ((event.clientX - this.startMouseX) / rect.width) * 100
-                    )
-                );
-
-                this.y = Math.max(
-                    0,
-                    Math.min(
-                        100,
-                        this.startY +
-                        ((event.clientY - this.startMouseY) / rect.height) * 100
-                    )
-                );
-            },
-
-            stopMarkerDrag() {
-                this.dragging = false;
-
-                document.removeEventListener(
-                    'pointermove',
-                    this.moveHandler
-                );
-
-                document.removeEventListener(
-                    'pointerup',
-                    this.upHandler
-                );
-
-                document.removeEventListener(
-                    'pointercancel',
-                    this.upHandler
-                );
+            if (!editor || editor.mapMode !== 'college') {
+                return `
+                    width:${this.size}px;
+                    height:${this.size}px;
+                    font-size:${Math.max(3, Math.round(this.size * 0.36))}px;
+                    background:#0E4C6B;
+                    opacity:1;
+                `;
             }
-        })
-    );
+
+            const colors = editor.markerCollegeColors(this.number);
+
+            let background = '#6B7280';
+
+            if (colors.length > 0) {
+                const segment = 100 / colors.length;
+
+                const gradients = colors.map((color, index) => {
+                    const start = index * segment;
+                    const end = (index + 1) * segment;
+
+                    return `${color} ${start}% ${end}%`;
+                });
+
+                background = `conic-gradient(${gradients.join(', ')})`;
+            }
+
+            const isDimmed = editor.selectedCollege &&
+                !editor.markerHasCollege(this.number, editor.selectedCollege);
+
+            return `
+                width:${this.size}px;
+                height:${this.size}px;
+                font-size:${Math.max(3, Math.round(this.size * 0.36))}px;
+                background:${background};
+                opacity:${isDimmed ? 0.2 : 1};
+            `;
+        },
+
+        init() {
+            this.moveHandler = event => this.moveMarker(event);
+            this.upHandler = () => this.stopMarkerDrag();
+        },
+
+        editor() {
+            let element = this.$root.parentElement;
+
+            while (element) {
+                if (
+                    element.hasAttribute('x-data') &&
+                    element.getAttribute('x-data').startsWith('campusMapEditor')
+                ) {
+                    return Alpine.$data(element);
+                }
+
+                element = element.parentElement;
+            }
+
+            return null;
+        },
+
+        selectMarker() {
+            const editor = this.editor();
+
+            if (!editor || !editor.editMode) return;
+
+            editor.selectMarker(
+                this.id,
+                this.label,
+                this.size
+            );
+        },
+
+        
+handleClick() {
+    const editor = this.editor();
+
+    if (!editor) return;
+
+    if (editor.editMode) {
+        this.selectMarker();
+    } else {
+        // Clear the previous highlighted marker.
+        editor.markers().forEach(node => {
+            Alpine.$data(node).selected = false;
+        });
+
+        // Highlight the clicked marker.
+        this.selected = true;
+
+        // Open its building details.
+        editor.openLocation(this.number, this.label);
+    }
+},
+
+        startMarkerDrag(event) {
+            const editor = this.editor();
+
+            if (
+                !editor ||
+                !editor.editMode ||
+                event.button !== 0 ||
+                editor.saving
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            this.selectMarker();
+
+            this.dragging = true;
+
+            this.startMouseX = event.clientX;
+            this.startMouseY = event.clientY;
+
+            this.startX = this.x;
+            this.startY = this.y;
+
+            document.removeEventListener('pointermove', this.moveHandler);
+            document.removeEventListener('pointerup', this.upHandler);
+            document.removeEventListener('pointercancel', this.upHandler);
+
+            document.addEventListener('pointermove', this.moveHandler);
+
+            document.addEventListener(
+                'pointerup',
+                this.upHandler,
+                { once: true }
+            );
+
+            document.addEventListener(
+                'pointercancel',
+                this.upHandler,
+                { once: true }
+            );
+        },
+
+        moveMarker(event) {
+            if (!this.dragging) return;
+
+            const editor = this.editor();
+
+            if (!editor || !editor.editMode) {
+                this.stopMarkerDrag();
+                return;
+            }
+
+            const canvas = editor.$refs.canvas;
+            const rect = canvas.getBoundingClientRect();
+
+            if (rect.width <= 0 || rect.height <= 0) return;
+
+            this.x = Math.max(
+                0,
+                Math.min(
+                    100,
+                    this.startX +
+                    ((event.clientX - this.startMouseX) / rect.width) * 100
+                )
+            );
+
+            this.y = Math.max(
+                0,
+                Math.min(
+                    100,
+                    this.startY +
+                    ((event.clientY - this.startMouseY) / rect.height) * 100
+                )
+            );
+        },
+
+        stopMarkerDrag() {
+            this.dragging = false;
+
+            document.removeEventListener('pointermove', this.moveHandler);
+            document.removeEventListener('pointerup', this.upHandler);
+            document.removeEventListener('pointercancel', this.upHandler);
+        }
+    })
+);
+
 });
 </script>
 @endsection

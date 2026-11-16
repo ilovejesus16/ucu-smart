@@ -1,3 +1,4 @@
+
 @php
     $navigationLayout = 'layouts.visitor';
     $navigationAccess = 'Visitor Access';
@@ -17,551 +18,629 @@
 
 @section('content')
 
-<div class="max-w-[1500px] mx-auto">
+<div
+    x-data="campusMapViewer()"
+    data-buildings="{{ json_encode($buildings->map(function ($building) {
+        return [
+            'id' => $building->id,
+            'code' => $building->building_code,
+            'name' => $building->building_name,
+            'description' => $building->description,
+            'total_floor_area' => $building->total_floor_area,
+            'year_constructed' => $building->year_constructed,
+            'classroom_count' => $building->classroom_count,
+            'laboratory_count' => $building->laboratory_count,
+            'office_count' => $building->office_count,
+            'restroom_count' => $building->restroom_count,
+            'function_room_count' => $building->function_room_count,
+            'rooms' => $building->rooms->map(function ($room) {
+                return [
+                    'id' => $room->id,
+                    'number' => $room->room_number,
+                    'name' => $room->room_name,
+                    'floor' => $room->floor,
+                    'college_assignments' => $room->collegeAssignments->map(function ($assignment) {
+                        return [
+                            'college_code' => $assignment->college->college_code,
+                            'college_name' => $assignment->college->college_name,
+                            'color' => $assignment->college->color,
+                            'is_primary' => $assignment->is_primary,
+                            'room_type' => $assignment->room_type,
+                            'remarks' => $assignment->remarks,
+                        ];
+                    })->values(),
+                ];
+            })->values(),
+        ];
+    })->values()) }}"
+    data-locations="{{ json_encode($locations->map(function ($location) {
+        return [
+            'id' => $location->id,
+            'number' => $location->number,
+            'name' => $location->name,
+            'type' => $location->type,
+            'description' => $location->description,
+            'building_id' => $location->building_id,
+            'map_x' => $location->map_x,
+            'map_y' => $location->map_y,
+            'marker_size' => $location->marker_size ?? 28,
+            'total_floor_area' => $location->total_floor_area,
+            'year_constructed' => $location->year_constructed,
+            'classroom_count' => $location->classroom_count,
+            'laboratory_count' => $location->laboratory_count,
+            'office_count' => $location->office_count,
+            'restroom_count' => $location->restroom_count,
+            'function_room_count' => $location->function_room_count,
+        ];
+    })->values()) }}"
+    class="mx-auto max-w-[1600px] space-y-6"
+>
 
-    {{-- ========================================================= --}}
-    {{-- HEADER --}}
-    {{-- ========================================================= --}}
+    {{-- PAGE HEADER --}}
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-    <div class="mb-6">
+        <div>
+            <div class="mb-2 flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#0E4C6B]/10">
+                    <x-heroicon-o-map class="h-6 w-6 text-[#0E4C6B]" />
+                </div>
 
-        <div class="flex items-center gap-3 mb-3">
-
-            <div
-                class="w-11 h-11
-                       rounded-xl
-                       bg-[#0E4C6B]/10
-                       flex items-center
-                       justify-center">
-
-                <x-heroicon-o-map
-                    class="w-6 h-6 text-[#0E4C6B]"
-                />
-
+                <span class="rounded-full bg-[#0E4C6B]/10 px-3 py-1 text-xs font-bold text-[#0E4C6B]">
+                    {{ $navigationAccess }}
+                </span>
             </div>
 
-            <span
-                class="text-sm
-                       font-semibold
-                       text-[#0E4C6B]
-                       bg-[#0E4C6B]/10
-                       px-3 py-1
-                       rounded-full">
+            <h1 class="text-3xl font-extrabold tracking-tight text-[#0E2958] sm:text-4xl">
+                Campus Map
+            </h1>
 
-                {{ $navigationAccess }}
-
-            </span>
-
+            <p class="mt-2 max-w-3xl text-sm text-gray-500">
+                Explore Urdaneta City University, discover campus buildings,
+                and view room and college information.
+            </p>
         </div>
 
-
-        <h1
-            class="text-3xl sm:text-4xl
-                   font-extrabold
-                   text-[#0E2958]">
-
-            Campus Map
-
-        </h1>
-
-
-        <p
-            class="text-gray-500
-                   mt-2
-                   max-w-3xl">
-
-            View the Urdaneta City University campus layout and
-            identify buildings, facilities, and other campus locations
-            using the numbered legend.
-
-        </p>
+        <div class="flex items-center gap-2 self-start rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+            <span class="text-xs font-bold text-emerald-700">View-only access</span>
+        </div>
 
     </div>
 
 
-    {{-- ========================================================= --}}
-    {{-- MAIN CONTENT --}}
-    {{-- ========================================================= --}}
+    {{-- MAP AND DETAILS --}}
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
 
-    <div
-        class="grid
-               grid-cols-1
-               xl:grid-cols-[1fr_360px]
-               gap-5">
-
-
-        {{-- ===================================================== --}}
-        {{-- MAP --}}
-        {{-- ===================================================== --}}
-
-        <div
-            class="bg-white
-                   border border-gray-200
-                   rounded-2xl
-                   shadow-sm
-                   overflow-hidden">
-
+        {{-- MAP WORKSPACE --}}
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
 
             {{-- MAP HEADER --}}
-
-            <div
-                class="px-5 py-4
-                       border-b border-gray-200
-                       flex flex-col
-                       sm:flex-row
-                       sm:items-center
-                       sm:justify-between
-                       gap-3">
+            <div class="flex flex-col gap-4 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
 
                 <div>
-
-                    <h2
-                        class="font-bold
-                               text-[#0E2958]">
-
-                        UCU Campus Map
-
+                    <h2 class="font-bold text-[#0E2958]">
+                        UCU Campus Overview
                     </h2>
 
-                    <p
-                        class="text-xs
-                               text-gray-500
-                               mt-1">
-
-                        2D Campus Reference Map
-
+                    <p class="mt-1 text-xs text-gray-500">
+                        Select a numbered marker to explore its location.
                     </p>
-
                 </div>
 
-
-                {{-- MAP CONTROLS --}}
-
-                <div
-                    class="flex
-                           items-center
-                           gap-2">
+                <div class="flex flex-wrap items-center gap-2">
 
                     <button
                         type="button"
-                        id="zoomIn"
-                        class="map-control"
-                        title="Zoom in"
-                        aria-label="Zoom in">
-
-                        <x-heroicon-o-plus
-                            class="w-4 h-4"
-                        />
-
-                    </button>
-
-
-                    <button
-                        type="button"
-                        id="zoomOut"
-                        class="map-control"
+                        @click="zoomOut()"
+                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-[#0E4C6B] hover:text-[#0E4C6B]"
                         title="Zoom out"
-                        aria-label="Zoom out">
-
-                        <x-heroicon-o-minus
-                            class="w-4 h-4"
-                        />
-
+                    >
+                        <x-heroicon-o-minus class="h-4 w-4" />
                     </button>
 
+                    <span
+                        class="min-w-[55px] text-center text-xs font-bold tabular-nums text-gray-600"
+                        x-text="Math.round(zoom * 100) + '%'"
+                    ></span>
 
                     <button
                         type="button"
-                        id="resetMap"
-                        class="reset-control">
-
-                        Reset
-
+                        @click="zoomIn()"
+                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-[#0E4C6B] hover:text-[#0E4C6B]"
+                        title="Zoom in"
+                    >
+                        <x-heroicon-o-plus class="h-4 w-4" />
                     </button>
-
 
                     <button
                         type="button"
-                        id="fullscreenMap"
-                        class="map-control"
+                        @click="resetView()"
+                        class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                    >
+                        Reset View
+                    </button>
+
+                    <button
+                        type="button"
+                        @click="toggleFullscreen()"
+                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-[#0E4C6B] hover:text-[#0E4C6B]"
                         title="Fullscreen"
-                        aria-label="Fullscreen">
-
-                        <x-heroicon-o-arrows-pointing-out
-                            class="w-4 h-4"
-                        />
-
+                    >
+                        <x-heroicon-o-arrows-pointing-out class="h-4 w-4" />
                     </button>
 
                 </div>
+            </div>
+
+
+            {{-- MAP DISPLAY MODE --}}
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/70 px-5 py-3">
+
+                <div class="flex rounded-lg border border-gray-200 bg-white p-1">
+
+                    <button
+                        type="button"
+                        @click="mapMode = 'normal'; selectedCollege = null"
+                        class="rounded-md px-3 py-2 text-xs font-semibold transition"
+                        :class="mapMode === 'normal'
+                            ? 'bg-[#0E2958] text-white shadow-sm'
+                            : 'text-gray-600 hover:bg-gray-50'"
+                    >
+                        Normal
+                    </button>
+
+                    <button
+                        type="button"
+                        @click="mapMode = 'college'; selectedCollege = null"
+                        class="rounded-md px-3 py-2 text-xs font-semibold transition"
+                        :class="mapMode === 'college'
+                            ? 'bg-[#0E2958] text-white shadow-sm'
+                            : 'text-gray-600 hover:bg-gray-50'"
+                    >
+                        By College
+                    </button>
+
+                </div>
+
+                <p class="text-[11px] text-gray-500">
+                    <span x-text="positionedLocations.length"></span>
+                    mapped locations
+                </p>
 
             </div>
 
 
             {{-- MAP VIEWPORT --}}
-
             <div
-                id="mapViewport"
-                class="relative
-                       h-[560px]
-                       sm:h-[650px]
-                       lg:h-[760px]
-                       bg-[#eef2f4]
-                       overflow-hidden
-                       cursor-grab
-                       select-none">
+                x-ref="viewport"
+                @pointerdown="startPan($event)"
+                @pointermove="panMap($event)"
+                @pointerup="stopPan($event)"
+                @pointercancel="stopPan($event)"
+                @wheel.prevent="handleWheelZoom($event)"
+                class="relative w-full select-none overflow-hidden bg-[#EAF0F6]"
+                :class="panning ? 'cursor-grabbing' : 'cursor-grab'"
+                style="height: 620px; touch-action: none; background-image: linear-gradient(rgba(14,41,88,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(14,41,88,.055) 1px, transparent 1px); background-size: 28px 28px;"
+            >
 
-
-                {{-- Background --}}
-
+                {{-- FLOATING COLLEGE LEGEND --}}
                 <div
-                    class="absolute
-                           inset-0
-                           opacity-30
-                           pointer-events-none"
-                    style="
-                        background-image:
-                            linear-gradient(#d7dde1 1px, transparent 1px),
-                            linear-gradient(90deg, #d7dde1 1px, transparent 1px);
-                        background-size: 40px 40px;
-                    ">
+                    x-show="mapMode === 'college'"
+                    x-cloak
+                    @pointerdown.stop
+                    @click.stop
+                    class="absolute right-4 top-4 z-[100] max-h-[85%] w-52 overflow-y-auto rounded-xl border border-gray-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm"
+                >
+
+                    <div class="mb-3 flex items-center justify-between gap-2">
+                        <h3 class="text-sm font-bold text-[#0E2958]">
+                            College Legend
+                        </h3>
+
+                        <button
+                            type="button"
+                            @click="selectedCollege = null"
+                            class="text-xs font-semibold text-[#0E4C6B] hover:underline"
+                        >
+                            Show All
+                        </button>
+                    </div>
+
+                    <div class="space-y-2">
+
+                        @foreach($colleges as $college)
+                            <button
+                                type="button"
+                                @click="selectedCollege = selectedCollege === @js($college->college_code) ? null : @js($college->college_code)"
+                                class="flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-xs font-semibold transition hover:bg-gray-50"
+                                :class="selectedCollege === @js($college->college_code) ? 'ring-2 ring-offset-1' : 'opacity-80 hover:opacity-100'"
+                                style="border-color: {{ $college->color }}; color: {{ $college->color }};"
+                            >
+                                <span class="h-3 w-3 shrink-0 rounded-full"
+                                      style="background-color: {{ $college->color }}"></span>
+
+                                {{ $college->college_code }}
+
+                                <span
+                                    x-show="selectedCollege === @js($college->college_code)"
+                                    class="ml-auto"
+                                >
+                                    ✓
+                                </span>
+                            </button>
+                        @endforeach
+
+                    </div>
                 </div>
 
 
-                {{-- MAP CONTENT --}}
-
+                {{-- MAP CANVAS --}}
                 <div
-                    id="mapContent"
-                    class="absolute
-                           left-1/2
-                           top-1/2
-                           origin-center
-                           will-change-transform">
-
-
-                    {{-- UPDATED PNG MAP --}}
+                    x-ref="canvas"
+                    class="absolute left-1/2 top-1/2 w-[700px] max-w-none"
+                    :style="`
+                        transform: translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom});
+                        transform-origin: center center;
+                    `"
+                >
 
                     <img
-                        id="campusMap"
-                        src="{{ asset('images/ucu-campus-map.png') }}"
+                        src="{{ asset('images/mapnl.png') }}"
                         alt="Urdaneta City University Campus Map"
                         draggable="false"
-                        class="block
-                               w-[850px]
-                               sm:w-[1050px]
-                               lg:w-[1200px]
-                               max-w-none
-                               object-contain
-                               transition-[filter]
-                               duration-200"
+                        class="pointer-events-none block h-auto w-full select-none"
                     >
+
+                    {{-- DATABASE-BASED MARKERS --}}
+                    <template x-for="location in positionedLocations" :key="location.id">
+
+                        <button
+                            type="button"
+                            @pointerdown.stop
+                            @click.stop="openLocation(location)"
+                            class="group absolute z-50 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-extrabold text-white shadow-lg transition hover:z-[60] hover:scale-110"
+                            :class="selectedLocation && selectedLocation.id === location.id
+                                ? 'ring-4 ring-amber-300/70'
+                                : ''"
+                            :style="markerStyle(location)"
+                            :title="location.name"
+                        >
+                            <span x-text="location.number"></span>
+
+                            <span
+                                class="pointer-events-none absolute left-1/2 top-full z-[90] mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-[#0E2958] opacity-0 shadow-lg transition group-hover:opacity-100"
+                                x-text="location.name"
+                            ></span>
+                        </button>
+
+                    </template>
 
                 </div>
 
 
                 {{-- MAP INFO --}}
-
-                <div
-                    class="absolute
-                           top-4
-                           left-4
-                           bg-white/95
-                           backdrop-blur
-                           border border-gray-200
-                           rounded-xl
-                           shadow-sm
-                           px-4
-                           py-3
-                           pointer-events-none">
-
-                    <p
-                        class="text-xs
-                               font-semibold
-                               text-[#0E2958]">
-
+                <div class="pointer-events-none absolute left-4 top-4 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+                    <p class="text-xs font-bold text-[#0E2958]">
                         UCU Campus Map
-
                     </p>
 
-                    <p
-                        class="text-[11px]
-                               text-gray-500
-                               mt-1">
-
-                        Drag to move • Scroll to zoom
-
+                    <p class="mt-1 text-[11px] text-gray-500">
+                        Drag to move · Scroll to zoom
                     </p>
-
                 </div>
 
 
                 {{-- ZOOM LEVEL --}}
-
-                <div
-                    class="absolute
-                           bottom-4
-                           left-4
-                           bg-white/95
-                           backdrop-blur
-                           border border-gray-200
-                           rounded-lg
-                           shadow-sm
-                           px-3
-                           py-2
-                           pointer-events-none">
-
+                <div class="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 shadow-sm">
                     <span
-                        id="zoomLevel"
-                        class="text-[11px]
-                               font-semibold
-                               text-gray-600">
-
-                        100%
-
-                    </span>
-
+                        class="text-[11px] font-bold text-gray-600"
+                        x-text="Math.round(zoom * 100) + '%'"
+                    ></span>
                 </div>
+
+            </div>
+
+
+            {{-- MAP FOOTER --}}
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/70 px-5 py-3">
+
+                <p class="text-xs text-gray-500">
+                    <span class="font-bold text-[#0E2958]" x-text="positionedLocations.length"></span>
+                    locations displayed on the map
+                </p>
+
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <x-heroicon-o-eye class="h-4 w-4" />
+                    View only
+                </span>
 
             </div>
 
         </div>
 
 
-        {{-- ===================================================== --}}
-        {{-- LEGEND --}}
-        {{-- ===================================================== --}}
+        {{-- RIGHT INFORMATION PANEL --}}
+        <div class="space-y-5">
 
-        <div
-            class="bg-white
-                   border border-gray-200
-                   rounded-2xl
-                   shadow-sm
-                   overflow-hidden
-                   h-fit">
+            {{-- SELECTED LOCATION DETAILS --}}
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
 
+                <div class="border-b border-gray-100 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0E4C6B]/10">
+                            <x-heroicon-o-building-office-2 class="h-5 w-5 text-[#0E4C6B]" />
+                        </div>
 
-            {{-- LEGEND HEADER --}}
+                        <div>
+                            <h2 class="font-bold text-[#0E2958]">
+                                Location Information
+                            </h2>
 
-            <div
-                class="px-5 py-4
-                       border-b border-gray-200">
-
-                <div
-                    class="flex
-                           items-center
-                           gap-3">
-
-                    <div
-                        class="w-10 h-10
-                               rounded-xl
-                               bg-[#0E4C6B]/10
-                               flex
-                               items-center
-                               justify-center">
-
-                        <x-heroicon-o-list-bullet
-                            class="w-5 h-5
-                                   text-[#0E4C6B]"
-                        />
-
+                            <p class="mt-0.5 text-xs text-gray-500">
+                                Building and facility details
+                            </p>
+                        </div>
                     </div>
+                </div>
 
+                <div class="p-5">
+
+                    <template x-if="!selectedLocation">
+                        <div class="py-8 text-center">
+                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+                                <x-heroicon-o-map-pin class="h-7 w-7 text-gray-400" />
+                            </div>
+
+                            <h3 class="mt-4 text-sm font-bold text-[#0E2958]">
+                                Explore the campus
+                            </h3>
+
+                            <p class="mx-auto mt-2 max-w-[230px] text-xs leading-5 text-gray-500">
+                                Select any numbered marker on the map to view its information.
+                            </p>
+                        </div>
+                    </template>
+
+
+                    <template x-if="selectedLocation">
+
+                        <div>
+
+                            <p
+                                class="text-[11px] font-bold uppercase tracking-wider text-[#0E4C6B]"
+                                x-text="'Campus Location ' + selectedLocation.number"
+                            ></p>
+
+                            <h3
+                                class="mt-1 text-lg font-extrabold leading-snug text-[#0E2958]"
+                                x-text="selectedLocation.building ? selectedLocation.building.name : selectedLocation.name"
+                            ></h3>
+
+                            <p
+                                class="mt-2 text-xs leading-5 text-gray-500"
+                                x-text="selectedLocation.building
+                                    ? 'Building Code: ' + selectedLocation.building.code
+                                    : (selectedLocation.description || selectedLocation.type || 'Campus facility or landmark')"
+                            ></p>
+
+
+                            {{-- BUILDING INFORMATION --}}
+                            <template x-if="selectedLocation.building">
+
+                                <div class="mt-5 space-y-4">
+
+                                    <div class="grid grid-cols-2 gap-2">
+
+                                        <div class="rounded-xl bg-gray-50 p-3">
+                                            <p class="text-[11px] text-gray-500">
+                                                Total Rooms
+                                            </p>
+
+                                            <p
+                                                class="mt-1 text-2xl font-extrabold text-[#0E2958]"
+                                                x-text="selectedLocation.building.rooms.length"
+                                            ></p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-gray-50 p-3">
+                                            <p class="text-[11px] text-gray-500">
+                                                Floor Area
+                                            </p>
+
+                                            <p
+                                                class="mt-1 text-lg font-extrabold text-[#0E2958]"
+                                                x-text="selectedLocation.building.total_floor_area
+                                                    ? selectedLocation.building.total_floor_area + ' m²'
+                                                    : '—'"
+                                            ></p>
+                                        </div>
+
+                                    </div>
+
+
+                                    <div class="rounded-xl border border-gray-200 p-3">
+
+                                        <h4 class="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                                            Building Information
+                                        </h4>
+
+                                        <div class="space-y-2 text-xs">
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Year Constructed</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.year_constructed || '—'"></span>
+                                            </p>
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Classrooms</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.classroom_count ?? '—'"></span>
+                                            </p>
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Laboratories</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.laboratory_count ?? '—'"></span>
+                                            </p>
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Offices</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.office_count ?? '—'"></span>
+                                            </p>
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Restrooms</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.restroom_count ?? '—'"></span>
+                                            </p>
+
+                                            <p class="flex justify-between gap-3">
+                                                <span class="text-gray-500">Function Rooms</span>
+                                                <span class="font-semibold text-gray-800" x-text="selectedLocation.building.function_room_count ?? '—'"></span>
+                                            </p>
+
+                                        </div>
+
+                                        <template x-if="selectedLocation.building.description">
+                                            <p class="mt-3 border-t border-gray-100 pt-3 text-xs leading-5 text-gray-600"
+                                               x-text="selectedLocation.building.description"></p>
+                                        </template>
+
+                                    </div>
+
+
+                                    {{-- ROOMS --}}
+                                    <div>
+
+                                        <div class="mb-3 flex items-center justify-between">
+                                            <h4 class="text-sm font-bold text-[#0E2958]">
+                                                Registered Rooms
+                                            </h4>
+
+                                            <span class="rounded-full bg-[#0E4C6B]/10 px-2.5 py-1 text-[10px] font-bold text-[#0E4C6B]"
+                                                  x-text="selectedLocation.building.rooms.length + ' rooms'"></span>
+                                        </div>
+
+                                        <div class="max-h-[350px] space-y-2 overflow-y-auto pr-1">
+
+                                            <template x-if="selectedLocation.building.rooms.length === 0">
+                                                <p class="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
+                                                    No rooms have been registered for this building.
+                                                </p>
+                                            </template>
+
+                                            <template x-for="room in selectedLocation.building.rooms" :key="room.id">
+
+                                                <div class="rounded-xl border border-gray-200 p-3">
+
+                                                    <p class="text-sm font-bold text-[#0E2958]"
+                                                       x-text="room.number || room.name || ('Room ' + room.id)"></p>
+
+                                                    <p x-show="room.name && room.number && room.name !== room.number"
+                                                       class="mt-1 text-xs text-gray-500"
+                                                       x-text="room.name"></p>
+
+                                                    <p class="mt-1 text-xs text-gray-500"
+                                                       x-text="'Floor: ' + (room.floor ?? 'Not specified')"></p>
+
+                                                    <template x-if="room.college_assignments && room.college_assignments.length">
+
+                                                        <div class="mt-3">
+                                                            <p class="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                                                                Assigned Colleges
+                                                            </p>
+
+                                                            <div class="flex flex-wrap gap-1.5">
+
+                                                                <template x-for="assignment in room.college_assignments" :key="assignment.college_code">
+
+                                                                    <span
+                                                                        class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold"
+                                                                        :style="`background:${assignment.color}18;color:${assignment.color};border:1px solid ${assignment.color}55;`"
+                                                                    >
+                                                                        <span class="h-1.5 w-1.5 rounded-full"
+                                                                              :style="`background:${assignment.color}`"></span>
+
+                                                                        <span x-text="assignment.college_code"></span>
+
+                                                                        <span class="opacity-70"
+                                                                              x-text="assignment.is_primary ? 'Primary' : 'Shared'"></span>
+                                                                    </span>
+
+                                                                </template>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </template>
+
+                                                </div>
+
+                                            </template>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </template>
+
+
+                            {{-- NON-BUILDING LOCATION --}}
+                            <template x-if="!selectedLocation.building">
+                                <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+
+                                    <div class="flex items-center gap-2">
+                                        <x-heroicon-o-map-pin class="h-4 w-4 text-[#0E4C6B]" />
+
+                                        <p class="text-xs font-bold text-[#0E2958]">
+                                            Campus Facility / Landmark
+                                        </p>
+                                    </div>
+
+                                    <p class="mt-2 text-xs leading-5 text-gray-500"
+                                       x-text="selectedLocation.description || 'Additional building information is not available for this location.'"></p>
+
+                                </div>
+                            </template>
+
+
+                            <button
+                                type="button"
+                                @click="selectedLocation = null"
+                                class="mt-5 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                            >
+                                Close Details
+                            </button>
+
+                        </div>
+
+                    </template>
+
+                </div>
+            </div>
+
+
+            {{-- MAP GUIDE --}}
+            <div class="overflow-hidden rounded-2xl bg-[#0E2958] p-5 text-white shadow-sm">
+
+                <div class="flex items-start gap-3">
+
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                        <x-heroicon-o-information-circle class="h-5 w-5" />
+                    </div>
 
                     <div>
+                        <h3 class="text-sm font-bold">
+                            Campus Map Guide
+                        </h3>
 
-                        <h2
-                            class="font-bold
-                                   text-[#0E2958]">
-
-                            Campus Legend
-
-                        </h2>
-
-                        <p
-                            class="text-xs
-                                   text-gray-500
-                                   mt-1">
-
-                            Building and facility reference
-
+                        <p class="mt-2 text-xs leading-5 text-blue-100">
+                            Select a numbered marker to explore a building or facility.
+                            Use By College to identify locations associated with each college.
+                            Interactive navigation and route guidance are available through the UCU Smart+ mobile application.
                         </p>
-
                     </div>
 
                 </div>
-
-            </div>
-
-
-            {{-- LEGEND LIST --}}
-
-            <div
-                class="max-h-[700px]
-                       overflow-y-auto">
-
-
-                @php
-
-                    $locations = [
-
-                        1 => 'DR. LEONCIO ANCHETA BUILDING I',
-
-                        2 => 'DR. LEONCIO ANCHETA BUILDING II',
-
-                        3 => 'HONASAN HALL',
-
-                        4 => 'BADAR BUILDING',
-
-                        5 => 'DR. SOLEDAD F. CARINGAL BUILDING',
-
-                        6 => 'NURSING BUILDING I',
-
-                        7 => 'NURSING BUILDING II',
-
-                        8 => "RESORT'S WORLD BUILDING",
-
-                        9 => 'DR. TEOFIDEZ E. CALVERO BUILDING',
-
-                        10 => 'DR. PEDRO T. ORATA BUILDING I',
-
-                        11 => 'HON. JULIO E. PARAYNO BUILDING',
-
-                        12 => 'DR. PEDRO T. ORATA BUILDING II',
-
-                        13 => 'GYMNASIUM',
-
-                        14 => 'SEWER TREATMENT PLANT',
-
-                        15 => 'MINI GYMNASIUM',
-
-                        16 => 'P.E. OFFICE',
-
-                        17 => 'FITNESS GYM II',
-
-                        18 => 'FITNESS GYM I',
-
-                        19 => 'WELLNESS SPA',
-
-                        20 => 'E.M.A.S.',
-
-                        21 => 'GREEN HOME',
-
-                        22 => 'GENERATOR SET',
-
-                        23 => 'ANIMAL CLINIC',
-
-                        24 => 'UNIVERSITY CLINIC',
-
-                        25 => 'MOCK HOTEL',
-
-                        26 => 'AUDIO VISUAL ROOM',
-
-                        27 => 'DR. ORATA PARK',
-
-                        28 => 'QUADRANGLE',
-
-                        29 => 'SQUARE GARDEN',
-
-                        30 => 'NDRRMO',
-
-                        31 => 'AIRPLANE BUILDING',
-
-                        32 => 'TURNSTILE',
-
-                        33 => 'ENTREP. & LAW BUILDING',
-
-                        34 => 'TOILET',
-
-                        35 => 'PARKING',
-
-                    ];
-
-                @endphp
-
-
-                @foreach ($locations as $number => $location)
-
-                    <div
-                        class="legend-item">
-
-                        <span
-                            class="legend-number">
-
-                            {{ $number }}
-
-                        </span>
-
-
-                        <span
-                            class="legend-name">
-
-                            {{ $location }}
-
-                        </span>
-
-                    </div>
-
-                @endforeach
-            
-            </div>
-
-        </div>
-
-    </div>
-
-
-    {{-- ========================================================= --}}
-    {{-- INFORMATION BAR --}}
-    {{-- ========================================================= --}}
-
-    <div
-        class="mt-5
-               bg-[#0E2958]
-               rounded-2xl
-               p-5
-               text-white">
-
-        <div
-            class="flex
-                   items-center
-                   gap-4">
-
-            <div
-                class="w-11 h-11
-                       rounded-xl
-                       bg-white/10
-                       flex
-                       items-center
-                       justify-center
-                       flex-shrink-0">
-
-                <x-heroicon-o-map
-                    class="w-6 h-6"
-                />
-
-            </div>
-
-
-            <div>
-
-                <h3
-                    class="font-bold">
-
-                    Campus Reference Map
-
-                </h3>
-
-                <p
-                    class="text-sm
-                           text-blue-100
-                           mt-1">
-
-                    Use the numbered legend to identify buildings,
-                    facilities, and other locations around the UCU campus.
-                    Interactive navigation and route guidance are available
-                    through the UCU Smart+ mobile application.
-
-                </p>
 
             </div>
 
@@ -572,645 +651,241 @@
 </div>
 
 
-{{-- ============================================================= --}}
-{{-- STYLES --}}
-{{-- ============================================================= --}}
-
-<style>
-
-    /*
-    |--------------------------------------------------------------------------
-    | MAP CONTROLS
-    |--------------------------------------------------------------------------
-    */
-
-    .map-control {
-
-        width: 36px;
-        height: 36px;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        background: white;
-
-        border: 1px solid #e5e7eb;
-
-        border-radius: 9px;
-
-        color: #475569;
-
-        box-shadow:
-            0 2px 6px rgba(0, 0, 0, .06);
-
-        transition:
-            all .15s ease;
-
-    }
-
-
-    .map-control:hover {
-
-        background: #f8fafc;
-
-        color: #0E4C6B;
-
-        border-color: #0E4C6B;
-
-        transform: translateY(-1px);
-
-        box-shadow:
-            0 4px 10px rgba(14, 76, 107, .12);
-
-    }
-
-
-    .map-control:active {
-
-        transform:
-            translateY(0)
-            scale(.96);
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | RESET
-    |--------------------------------------------------------------------------
-    */
-
-    .reset-control {
-
-        height: 36px;
-
-        padding:
-            0 13px;
-
-        border-radius: 9px;
-
-        border:
-            1px solid #e5e7eb;
-
-        background: white;
-
-        color: #475569;
-
-        font-size: 12px;
-
-        font-weight: 600;
-
-        transition:
-            all .15s ease;
-
-    }
-
-
-    .reset-control:hover {
-
-        background: #f8fafc;
-
-        color: #0E4C6B;
-
-        border-color: #cbd5e1;
-
-        transform:
-            translateY(-1px);
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | MAP
-    |--------------------------------------------------------------------------
-    */
-
-    #campusMap {
-
-        transform-origin:
-            center center;
-
-        user-select: none;
-
-        -webkit-user-drag: none;
-
-        pointer-events: none;
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | LEGEND
-    |--------------------------------------------------------------------------
-    */
-
-    .legend-item {
-
-        display: flex;
-
-        align-items: center;
-
-        gap: 12px;
-
-        padding:
-            12px 18px;
-
-        border-bottom:
-            1px solid #f1f5f9;
-
-        transition:
-            background .15s ease;
-
-    }
-
-
-    .legend-item:hover {
-
-        background:
-            rgba(14, 76, 107, .035);
-
-    }
-
-
-    .legend-number {
-
-        width: 31px;
-        height: 31px;
-
-        display: flex;
-
-        align-items: center;
-
-        justify-content: center;
-
-        flex-shrink: 0;
-
-        border-radius: 9px;
-
-        background:
-            #0E4C6B;
-
-        color: white;
-
-        font-size: 11px;
-
-        font-weight: 800;
-
-        box-shadow:
-            0 2px 5px rgba(14, 76, 107, .18);
-
-    }
-
-
-    .legend-name {
-
-        font-size: 12px;
-
-        line-height: 1.4;
-
-        font-weight: 600;
-
-        color: #334155;
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | SCROLLBAR
-    |--------------------------------------------------------------------------
-    */
-
-    .max-h-\[700px\]::-webkit-scrollbar {
-
-        width: 6px;
-
-    }
-
-
-    .max-h-\[700px\]::-webkit-scrollbar-track {
-
-        background:
-            #f8fafc;
-
-    }
-
-
-    .max-h-\[700px\]::-webkit-scrollbar-thumb {
-
-        background:
-            #cbd5e1;
-
-        border-radius:
-            999px;
-
-    }
-
-
-    .max-h-\[700px\]::-webkit-scrollbar-thumb:hover {
-
-        background:
-            #94a3b8;
-
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | FULLSCREEN
-    |--------------------------------------------------------------------------
-    */
-
-    #mapViewport:fullscreen {
-
-        width: 100vw;
-
-        height: 100vh;
-
-        border-radius: 0;
-
-    }
-
-
-    #mapViewport:fullscreen #mapContent {
-
-        transform-origin:
-            center center;
-
-    }
-
-</style>
-
-
-{{-- ============================================================= --}}
-{{-- JAVASCRIPT --}}
-{{-- ============================================================= --}}
-
 <script>
+document.addEventListener('alpine:init', () => {
 
-document.addEventListener(
-    'DOMContentLoaded',
-    function () {
+    Alpine.data('campusMapViewer', () => ({
 
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        panning: false,
 
-        /*
-        |--------------------------------------------------------------------------
-        | ELEMENTS
-        |--------------------------------------------------------------------------
-        */
+        startMouseX: 0,
+        startMouseY: 0,
+        startPanX: 0,
+        startPanY: 0,
 
-        const viewport =
-            document.getElementById(
-                'mapViewport'
+        mapMode: 'normal',
+        selectedCollege: null,
+
+        buildings: [],
+        locations: [],
+        selectedLocation: null,
+
+        buildingMap: {
+            1: 'B01', 2: 'B02', 3: 'B03', 4: 'B04', 5: 'B05',
+            6: 'B06', 7: 'B07', 8: 'B08', 9: 'B09', 10: 'B10',
+            11: 'B11', 12: 'B12', 13: 'B17', 15: 'B19',
+            17: 'B14', 18: 'B13', 25: 'B18',
+        },
+
+        init() {
+            try {
+                this.buildings = JSON.parse(this.$el.dataset.buildings || '[]');
+                this.locations = JSON.parse(this.$el.dataset.locations || '[]');
+            } catch (error) {
+                console.error('Unable to load campus map data:', error);
+                this.buildings = [];
+                this.locations = [];
+            }
+        },
+
+        get positionedLocations() {
+            return this.locations.filter(location =>
+                location.map_x !== null &&
+                location.map_y !== null
             );
+        },
 
+        buildingForLocation(location) {
+            if (location.building_id) {
+                const linkedBuilding = this.buildings.find(building =>
+                    Number(building.id) === Number(location.building_id)
+                );
 
-        const content =
-            document.getElementById(
-                'mapContent'
-            );
+                if (linkedBuilding) return linkedBuilding;
+            }
 
+            const code = this.buildingMap[Number(location.number)];
 
-        const map =
-            document.getElementById(
-                'campusMap'
-            );
+            if (!code) return null;
 
+            return this.buildings.find(building =>
+                building.code === code
+            ) || null;
+        },
 
-        const zoomLevel =
-            document.getElementById(
-                'zoomLevel'
-            );
+        collegeAssignments(location) {
+            const building = this.buildingForLocation(location);
 
+            if (!building) return [];
 
-        const zoomInButton =
-            document.getElementById(
-                'zoomIn'
-            );
+            const assignments = (building.rooms || [])
+                .flatMap(room => room.college_assignments || [])
+                .filter(assignment => assignment.is_primary === true);
 
+            return [...new Map(
+                assignments.map(assignment => [
+                    assignment.college_code,
+                    assignment
+                ])
+            ).values()];
+        },
 
-        const zoomOutButton =
-            document.getElementById(
-                'zoomOut'
-            );
+        markerCollegeColors(location) {
+            return this.collegeAssignments(location)
+                .map(assignment => assignment.color)
+                .filter(Boolean);
+        },
 
+        markerHasCollege(location, collegeCode) {
+            return this.collegeAssignments(location)
+                .some(assignment => assignment.college_code === collegeCode);
+        },
 
-        const resetButton =
-            document.getElementById(
-                'resetMap'
-            );
+        markerStyle(location) {
+            const size = Number(location.marker_size || 28);
 
+            if (this.mapMode !== 'college') {
+                return `
+                    left:${location.map_x}%;
+                    top:${location.map_y}%;
+                    width:${size}px;
+                    height:${size}px;
+                    font-size:${Math.max(3, Math.round(size * 0.36))}px;
+                    background:#0E4C6B;
+                `;
+            }
 
-        const fullscreenButton =
-            document.getElementById(
-                'fullscreenMap'
-            );
+            const colors = this.markerCollegeColors(location);
 
+            let background = '#6B7280';
 
-        /*
-        |--------------------------------------------------------------------------
-        | MAP STATE
-        |--------------------------------------------------------------------------
-        */
+            if (colors.length > 0) {
+                const segment = 100 / colors.length;
 
-        let scale = 1;
+                const gradients = colors.map((color, index) => {
+                    const start = index * segment;
+                    const end = (index + 1) * segment;
 
-        let positionX = 0;
+                    return `${color} ${start}% ${end}%`;
+                });
 
-        let positionY = 0;
+                background = `conic-gradient(${gradients.join(', ')})`;
+            }
 
-        let dragging = false;
+            const isDimmed = this.selectedCollege &&
+                !this.markerHasCollege(location, this.selectedCollege);
 
-        let startX = 0;
-
-        let startY = 0;
-
-
-        const MIN_SCALE = 0.5;
-
-        const MAX_SCALE = 4;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | TRANSFORM
-        |--------------------------------------------------------------------------
-        */
-
-        function updateTransform() {
-
-            content.style.transform = `
-                translate(
-                    calc(-50% + ${positionX}px),
-                    calc(-50% + ${positionY}px)
-                )
-                scale(${scale})
+            return `
+                left:${location.map_x}%;
+                top:${location.map_y}%;
+                width:${size}px;
+                height:${size}px;
+                font-size:${Math.max(3, Math.round(size * 0.36))}px;
+                background:${background};
+                opacity:${isDimmed ? 0.2 : 1};
             `;
-
-
-            zoomLevel.textContent =
-                Math.round(scale * 100) + '%';
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | ZOOM
-        |--------------------------------------------------------------------------
-        */
-
-        function zoom(amount) {
-
-            scale += amount;
-
-
-            scale =
-                Math.max(
-                    MIN_SCALE,
-                    Math.min(
-                        MAX_SCALE,
-                        scale
-                    )
-                );
-
-
-            updateTransform();
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | RESET
-        |--------------------------------------------------------------------------
-        */
-
-        function resetMap() {
-
-            scale = 1;
-
-            positionX = 0;
-
-            positionY = 0;
-
-            updateTransform();
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | BUTTONS
-        |--------------------------------------------------------------------------
-        */
-
-        zoomInButton.addEventListener(
-            'click',
-            function () {
-
-                zoom(.2);
-
-            }
-        );
-
-
-        zoomOutButton.addEventListener(
-            'click',
-            function () {
-
-                zoom(-.2);
-
-            }
-        );
-
-
-        resetButton.addEventListener(
-            'click',
-            resetMap
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | FULLSCREEN
-        |--------------------------------------------------------------------------
-        */
-
-        fullscreenButton.addEventListener(
-            'click',
-            function () {
-
-                if (
-                    !document.fullscreenElement
-                ) {
-
-                    viewport.requestFullscreen();
-
-                } else {
-
-                    document.exitFullscreen();
-
-                }
-
-            }
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | MOUSE WHEEL ZOOM
-        |--------------------------------------------------------------------------
-        */
-
-        viewport.addEventListener(
-            'wheel',
-            function (event) {
-
-                event.preventDefault();
-
-
-                if (
-                    event.deltaY < 0
-                ) {
-
-                    zoom(.15);
-
-                } else {
-
-                    zoom(-.15);
-
-                }
-
-            },
-            {
-                passive: false
-            }
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | DRAG / PAN
-        |--------------------------------------------------------------------------
-        */
-
-        viewport.addEventListener(
-            'pointerdown',
-            function (event) {
-
-                if (
-                    event.target.closest(
-                        'button'
-                    )
-                ) {
-
-                    return;
-
-                }
-
-
-                dragging = true;
-
-
-                viewport.setPointerCapture(
-                    event.pointerId
-                );
-
-
-                startX =
-                    event.clientX -
-                    positionX;
-
-
-                startY =
-                    event.clientY -
-                    positionY;
-
-
-                viewport.classList.remove(
-                    'cursor-grab'
-                );
-
-
-                viewport.classList.add(
-                    'cursor-grabbing'
-                );
-
-            }
-        );
-
-
-        viewport.addEventListener(
-            'pointermove',
-            function (event) {
-
-                if (!dragging) {
-
-                    return;
-
-                }
-
-
-                positionX =
-                    event.clientX -
-                    startX;
-
-
-                positionY =
-                    event.clientY -
-                    startY;
-
-
-                updateTransform();
-
-            }
-        );
-
-
-        function stopDragging() {
-
-            dragging = false;
-
-
-            viewport.classList.remove(
-                'cursor-grabbing'
+        },
+
+        openLocation(location) {
+            const building = this.buildingForLocation(location);
+
+            this.selectedLocation = {
+                ...location,
+                building: building || null
+            };
+        },
+
+        zoomIn() {
+            this.zoom = Math.min(
+                Number((this.zoom + 0.25).toFixed(2)),
+                2.5
             );
+        },
 
-
-            viewport.classList.add(
-                'cursor-grab'
+        zoomOut() {
+            this.zoom = Math.max(
+                Number((this.zoom - 0.25).toFixed(2)),
+                0.5
             );
+        },
 
+        resetView() {
+            this.zoom = 1;
+            this.panX = 0;
+            this.panY = 0;
+        },
+
+        handleWheelZoom(event) {
+            const step = event.deltaY < 0 ? 0.1 : -0.1;
+
+            this.zoom = Math.max(
+                0.5,
+                Math.min(2.5, Number((this.zoom + step).toFixed(2)))
+            );
+        },
+
+        startPan(event) {
+            if (
+                event.button !== 0 ||
+                event.target.closest('button')
+            ) {
+                return;
+            }
+
+            this.panning = true;
+
+            this.startMouseX = event.clientX;
+            this.startMouseY = event.clientY;
+
+            this.startPanX = this.panX;
+            this.startPanY = this.panY;
+
+            try {
+                this.$refs.viewport.setPointerCapture(event.pointerId);
+            } catch (error) {}
+        },
+
+        panMap(event) {
+            if (!this.panning) return;
+
+            this.panX =
+                this.startPanX + event.clientX - this.startMouseX;
+
+            this.panY =
+                this.startPanY + event.clientY - this.startMouseY;
+        },
+
+        stopPan(event) {
+            this.panning = false;
+
+            try {
+                if (
+                    event &&
+                    this.$refs.viewport.hasPointerCapture(event.pointerId)
+                ) {
+                    this.$refs.viewport.releasePointerCapture(event.pointerId);
+                }
+            } catch (error) {}
+        },
+
+        async toggleFullscreen() {
+            try {
+                if (!document.fullscreenElement) {
+                    await this.$refs.viewport.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.error('Fullscreen error:', error);
+            }
         }
 
+    }));
 
-        viewport.addEventListener(
-            'pointerup',
-            stopDragging
-        );
-
-
-        viewport.addEventListener(
-            'pointercancel',
-            stopDragging
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | INITIAL MAP
-        |--------------------------------------------------------------------------
-        */
-
-        updateTransform();
-
-    }
-);
-
+});
 </script>
 
 @endsection

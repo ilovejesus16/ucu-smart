@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\RoomUsage;
 
 class Schedule extends Model
 {
@@ -11,13 +10,21 @@ class Schedule extends Model
         'room_id',
         'instructor_id',
         'subject_code',
+        'section_name',
         'subject_name',
+        'units',
+        'enrolled',
         'day',
         'start_time',
         'end_time',
         'semester',
         'school_year',
         'status',
+    ];
+
+    protected $casts = [
+        'units' => 'decimal:2',
+        'enrolled' => 'integer',
     ];
 
     public function room()
@@ -34,4 +41,9 @@ class Schedule extends Model
     {
         return $this->hasOne(RoomUsage::class);
     }
+
+    public function occurrences()
+{
+    return $this->hasMany(ClassOccurrence::class);
 }
+} 

@@ -4,7 +4,7 @@
 
 @section('content')
 
-<div class="max-w-7xl mx-auto">
+<div class="w-full mx-auto p-4 sm:p-6 lg:p-8">
 
     <!-- ========================================================= -->
 <!-- PAGE HEADER -->
@@ -14,11 +14,11 @@
 
     <div>
 
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-[#0E2958]">
+        <h1 class="text-3xl font-bold text-slate-800">
             My Schedule
         </h1>
 
-        <p class="text-gray-500 mt-2">
+        <p class="mt-1 text-slate-500">
             View and manage your assigned teaching schedule.
         </p>
 
@@ -44,7 +44,7 @@
             <x-heroicon-o-check-circle
                 class="w-5 h-5 mt-0.5 flex-shrink-0"/>
 
-            <p class="font-medium">
+            <p class="text-sm font-medium">
                 {{ session('success') }}
             </p>
 
@@ -84,30 +84,21 @@
     <!-- ========================================================= -->
 
     <div
-        class="bg-white
-               rounded-2xl
-               border border-gray-200
-               shadow-sm
-               overflow-hidden">
+        class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
 
 
         <!-- Table Header -->
 
         <div
-            class="px-5 sm:px-6 py-5
-                   border-b border-gray-200
-                   flex flex-col sm:flex-row
-                   sm:items-center
-                   sm:justify-between
-                   gap-3">
+            class="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
             <div>
 
-                <h2 class="text-xl font-bold text-[#0E2958]">
+                <h2 class="text-xl font-bold text-slate-800">
                     Assigned Schedule
                 </h2>
 
-                <p class="text-sm text-gray-500 mt-1">
+                <p class="mt-1 text-sm text-slate-500">
                     Your current teaching assignments.
                 </p>
 
@@ -120,45 +111,53 @@
 
         <div class="overflow-x-auto">
 
-            <table class="min-w-[1050px] w-full">
+            <table class="w-full min-w-[1300px]">
 
                 <!-- ================================================= -->
                 <!-- TABLE HEAD -->
                 <!-- ================================================= -->
 
-                <thead class="bg-[#0E2958] text-white">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
 
                     <tr>
 
-                        <th class="px-5 py-4 text-left text-sm font-semibold">
+                        <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide">
                             Subject
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
+                            Units
+                        </th>
+
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
+                            Enrolled
+                        </th>
+
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Room
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Day
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Time
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Semester
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             School Year
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Status
                         </th>
 
-                        <th class="px-5 py-4 text-center text-sm font-semibold">
+                        <th class="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide">
                             Action
                         </th>
 
@@ -175,17 +174,19 @@
 
                 @forelse($schedules as $schedule)
 
+                    @php
+                        $occurrenceStatus = $schedule->todayOccurrence?->status ?? 'scheduled';
+                    @endphp
+
                     <tr
-                        class="group
-                               hover:bg-[#0E4C6B]/[0.025]
-                               transition">
+                        class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors duration-150">
 
 
                         <!-- ========================================= -->
                         <!-- SUBJECT -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5">
+                        <td class="px-6 py-5">
 
                             <div class="flex items-start gap-3">
 
@@ -198,7 +199,7 @@
                                            flex-shrink-0">
 
                                     <x-heroicon-o-book-open
-                                        class="w-5 h-5 text-[#0E4C6B]"/>
+                                        class="w-5 h-5 text-indigo-600"/>
 
                                 </div>
 
@@ -207,22 +208,19 @@
 
                                     <span
                                         class="inline-flex
-                                               bg-[#0E4C6B]/10
-                                               text-[#0E4C6B]
+                                               bg-blue-50
+                                               text-blue-700
                                                px-2.5 py-1
-                                               rounded-lg
-                                               text-xs
-                                               font-semibold">
+                                               rounded-full
+                                               border border-blue-100
+                                               text-xs font-semibold">
 
                                         {{ $schedule->subject_code }}
 
                                     </span>
 
                                     <p
-                                        class="mt-2
-                                               font-semibold
-                                               text-gray-800
-                                               whitespace-normal">
+                                        class="mt-2 text-sm text-slate-600 max-w-xs whitespace-normal">
 
                                         {{ $schedule->subject_name }}
 
@@ -234,17 +232,28 @@
 
                         </td>
 
+                        <!-- UNITS -->
+                        <td class="px-6 py-5 text-center">
+                            <span class="inline-flex bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                {{ $schedule->units !== null ? rtrim(rtrim(number_format((float) $schedule->units, 2), '0'), '.') : '—' }}
+                            </span>
+                        </td>
+
+                        <!-- ENROLLED -->
+                        <td class="px-6 py-5 text-center">
+                            <span class="inline-flex bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                {{ $schedule->enrolled ?? 0 }}
+                            </span>
+                        </td>
 
                         <!-- ========================================= -->
                         <!-- ROOM -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+                        <td class="px-6 py-5 text-center">
 
                             <div
-                                class="inline-flex
-                                       items-center gap-2
-                                       text-gray-700">
+                                class="inline-flex items-center gap-2 text-slate-700">
 
                                 <x-heroicon-o-home-modern
                                     class="w-4 h-4 text-gray-400"/>
@@ -262,9 +271,9 @@
                         <!-- DAY -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+                        <td class="px-6 py-5 text-center">
 
-                            <span class="text-gray-700 font-medium">
+                            <span class="text-sm font-medium text-slate-700">
                                 {{ $schedule->day }}
                             </span>
 
@@ -275,17 +284,17 @@
                         <!-- TIME -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+                        <td class="px-6 py-5 text-center">
 
                             <div
                                 class="inline-flex
                                        items-center gap-2
-                                       bg-gray-50
-                                       border border-gray-200
+                                       bg-indigo-50
+                                       border border-blue-100
                                        rounded-lg
                                        px-3 py-2
                                        text-sm
-                                       text-gray-700
+                                       text-indigo-700
                                        whitespace-nowrap">
 
                                 <x-heroicon-o-clock
@@ -308,12 +317,12 @@
                         <!-- SEMESTER -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+                        <td class="px-6 py-5 text-center">
 
                             <span
                                 class="inline-flex
-                                       bg-gray-100
-                                       text-gray-700
+                                       bg-purple-50
+                                       text-purple-700
                                        px-3 py-1.5
                                        rounded-lg
                                        text-sm
@@ -330,12 +339,10 @@
                         <!-- SCHOOL YEAR -->
                         <!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+                        <td class="px-6 py-5 text-center">
 
                             <span
-                                class="text-gray-700
-                                       font-medium
-                                       whitespace-nowrap">
+                                class="inline-flex bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
 
                                 {{ $schedule->school_year }}
 
@@ -344,311 +351,174 @@
                         </td>
 
 
-                        <!-- ========================================= -->
-                        <!-- STATUS -->
-                        <!-- ========================================= -->
+                        
+<!-- STATUS -->
+<td class="px-6 py-5 text-center">
 
-                        <td class="px-5 py-5 text-center">
+    @if($schedule->displayStatus == 'upcoming')
 
-                            @if($schedule->status == 'scheduled')
+        <span class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            Upcoming
+        </span>
 
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           bg-yellow-50
-                                           text-yellow-700
-                                           border border-yellow-200
-                                           px-3 py-1.5
-                                           rounded-full
-                                           text-xs
-                                           font-semibold">
+    @elseif($schedule->displayStatus == 'scheduled')
 
-                                    <span
-                                        class="w-2 h-2
-                                               rounded-full
-                                               bg-yellow-500">
-                                    </span>
+        <span class="inline-flex items-center gap-2 bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+            Scheduled
+        </span>
 
-                                    Scheduled
+    @elseif($schedule->displayStatus == 'in_progress')
 
-                                </span>
+        <span class="inline-flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            In Progress
+        </span>
 
+    @elseif($schedule->displayStatus == 'completed')
 
-                            @elseif($schedule->status == 'in_progress')
+        <span class="inline-flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+            Completed
+        </span>
 
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           bg-red-50
-                                           text-red-700
-                                           border border-red-200
-                                           px-3 py-1.5
-                                           rounded-full
-                                           text-xs
-                                           font-semibold">
+    @elseif($schedule->displayStatus == 'missed')
 
-                                    <span
-                                        class="w-2 h-2
-                                               rounded-full
-                                               bg-red-500">
-                                    </span>
+        <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+            Missed
+        </span>
 
-                                    In Progress
+    @elseif($schedule->displayStatus == 'cancelled')
 
-                                </span>
+        <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+            Cancelled
+        </span>
 
+    @endif
 
-                            @elseif($schedule->status == 'completed')
+</td>
 
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           bg-green-50
-                                           text-green-700
-                                           border border-green-200
-                                           px-3 py-1.5
-                                           rounded-full
-                                           text-xs
-                                           font-semibold">
-
-                                    <span
-                                        class="w-2 h-2
-                                               rounded-full
-                                               bg-green-500">
-                                    </span>
-
-                                    Completed
-
-                                </span>
-
-
-                            @elseif($schedule->status == 'cancelled')
-
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           bg-gray-100
-                                           text-gray-600
-                                           border border-gray-200
-                                           px-3 py-1.5
-                                           rounded-full
-                                           text-xs
-                                           font-semibold">
-
-                                    <span
-                                        class="w-2 h-2
-                                               rounded-full
-                                               bg-gray-400">
-                                    </span>
-
-                                    Cancelled
-
-                                </span>
-
-                            @endif
-
-                        </td>
 
 
                         <!-- ========================================= -->
-                        <!-- ACTION -->
-                        <!-- ========================================= -->
+<!-- ACTION -->
+<!-- ========================================= -->
 
-                        <td class="px-5 py-5 text-center">
+<td class="px-6 py-5 text-center">
 
+    @if($schedule->displayStatus == 'scheduled')
 
-                            @if($schedule->status == 'scheduled')
+        <form
+            action="{{ route('instructor.schedule.start', $schedule) }}"
+            method="POST"
+            class="start-class-form">
 
-                                <!-- Start Class -->
+            @csrf
+            @method('PATCH')
 
-                                <form
-    action="{{ route('instructor.schedule.start', $schedule) }}"
-    method="POST"
-    class="start-class-form">
+            <button
+                type="button"
+                onclick="openClassConfirm(
+                    this.closest('form'),
+                    'Start Class?',
+                    'Are you sure you want to start this class?',
+                    'Start Class'
+                )"
+                class="inline-flex items-center justify-center gap-2 bg-[#0E4C6B] hover:bg-[#0B3D56] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm hover:shadow">
 
-    @csrf
-    @method('PATCH')
+                <x-heroicon-o-play class="w-4 h-4"/>
+                Start Class
 
-    <button
-        type="button"
-        onclick="openClassConfirm(
-            this.closest('form'),
-            'Start Class?',
-            'Are you sure you want to start this class?',
-            'Start Class'
-        )"
-        class="inline-flex
-               items-center
-               justify-center
-               gap-2
-               bg-[#0E4C6B]
-               hover:bg-[#0B3D56]
-               text-white
-               px-4 py-2.5
-               rounded-xl
-               text-sm
-               font-semibold
-               transition
-               shadow-sm
-               hover:shadow">
+            </button>
+        </form>
 
-        <x-heroicon-o-play class="w-4 h-4"/>
+    @elseif($schedule->displayStatus == 'in_progress')
 
-        Start Class
+        <form
+            action="{{ route('instructor.schedule.end', $schedule) }}"
+            method="POST"
+            class="end-class-form">
 
-    </button>
+            @csrf
+            @method('PATCH')
 
-</form>
+            <button
+                type="button"
+                onclick="openClassConfirm(
+                    this.closest('form'),
+                    'End Class?',
+                    'Are you sure you want to end this class?',
+                    'End Class'
+                )"
+                class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm hover:shadow">
 
+                <x-heroicon-o-stop class="w-4 h-4"/>
+                End Class
 
-                            @elseif($schedule->status == 'in_progress')
+            </button>
+        </form>
 
-                                <!-- End Class -->
+    @elseif($schedule->displayStatus == 'completed')
 
-                              <form
-    action="{{ route('instructor.schedule.end', $schedule) }}"
-    method="POST"
-    class="end-class-form">
+        <span class="inline-flex items-center gap-2 text-green-600 font-semibold text-sm">
+            <x-heroicon-o-check-circle class="w-5 h-5"/>
+            Completed
+        </span>
 
-    @csrf
-    @method('PATCH')
+    @elseif($schedule->displayStatus == 'missed')
 
-    <button
-        type="button"
-        onclick="openClassConfirm(
-            this.closest('form'),
-            'End Class?',
-            'Are you sure you want to end this class?',
-            'End Class'
-        )"
-        class="inline-flex
-               items-center
-               justify-center
-               gap-2
-               bg-red-600
-               hover:bg-red-700
-               text-white
-               px-4 py-2.5
-               rounded-xl
-               text-sm
-               font-semibold
-               transition
-               shadow-sm
-               hover:shadow">
+        <span class="text-gray-500 font-semibold text-sm">
+            Missed
+        </span>
 
-        <x-heroicon-o-stop class="w-4 h-4"/>
+    @elseif($schedule->displayStatus == 'cancelled')
 
-        End Class
+        <span class="inline-flex items-center gap-2 text-gray-500 font-semibold text-sm">
+            <x-heroicon-o-x-circle class="w-5 h-5"/>
+            Cancelled
+        </span>
 
-    </button>
+    @else
 
-</form>
+        <span class="text-gray-400">—</span>
 
+    @endif
 
-                            @elseif($schedule->status == 'completed')
+</td>
 
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           text-green-600
-                                           font-semibold
-                                           text-sm">
+</tr>
 
-                                    <x-heroicon-o-check-circle
-                                        class="w-5 h-5"/>
+@empty
 
-                                    Completed
+    <tr>
+        <td colspan="10" class="px-6 py-16 text-center">
 
-                                </span>
+            <div class="flex flex-col items-center justify-center">
 
+                <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <x-heroicon-o-calendar-days class="w-8 h-8 text-gray-400"/>
+                </div>
 
-                            @elseif($schedule->status == 'cancelled')
+                <h3 class="font-semibold text-gray-700">
+                    No schedules assigned
+                </h3>
 
-                                <span
-                                    class="inline-flex
-                                           items-center gap-2
-                                           text-gray-500
-                                           font-semibold
-                                           text-sm">
+                <p class="text-sm text-gray-500 mt-1">
+                    Your assigned classes will appear here.
+                </p>
 
-                                    <x-heroicon-o-x-circle
-                                        class="w-5 h-5"/>
+            </div>
 
-                                    Cancelled
+        </td>
+    </tr>
 
-                                </span>
+@endforelse
 
-
-                            @else
-
-                                <span class="text-gray-400">
-                                    —
-                                </span>
-
-                            @endif
-
-                        </td>
-
-                    </tr>
-
-
-                @empty
-
-                    <tr>
-
-                        <td
-                            colspan="8"
-                            class="px-6 py-16 text-center">
-
-                            <div
-                                class="flex flex-col
-                                       items-center
-                                       justify-center">
-
-                                <div
-                                    class="w-16 h-16
-                                           rounded-2xl
-                                           bg-gray-100
-                                           flex items-center
-                                           justify-center
-                                           mb-4">
-
-                                    <x-heroicon-o-calendar-days
-                                        class="w-8 h-8 text-gray-400"/>
-
-                                </div>
-
-                                <h3
-                                    class="font-semibold
-                                           text-gray-700">
-
-                                    No schedules assigned
-
-                                </h3>
-
-                                <p
-                                    class="text-sm
-                                           text-gray-500
-                                           mt-1">
-
-                                    Your assigned classes will appear here.
-
-                                </p>
-
-                            </div>
-
-                        </td>
-
-                    </tr>
-
-                @endforelse
-
-                </tbody>
-
-            </table>
-
-        </div>
-
+</tbody>
+</table>
 
         <!-- ========================================================= -->
         <!-- PAGINATION -->
@@ -657,9 +527,7 @@
         @if($schedules->hasPages())
 
             <div
-                class="px-5 sm:px-6 py-4
-                       border-t border-gray-200
-                       overflow-x-auto">
+                class="p-4 sm:p-6 border-t border-slate-200 overflow-x-auto">
 
                 {{ $schedules->links() }}
 

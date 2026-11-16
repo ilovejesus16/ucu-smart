@@ -13,41 +13,26 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-   protected $fillable = [
-    'username',
-    'role',
-    'status',
-    'student_id',
-    'employee_id',
-    'first_name',
-    'last_name',
-    'college',
-    'course',
-    'department',
-    'email',
-    'password',
-];
+    protected $fillable = [
+        'username',
+        'role',
+        'status',
+        'student_id',
+        'employee_id',
+        'first_name',
+        'last_name',
+        'college',
+        'course',
+        'department',
+        'email',
+        'password',
+    ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -56,62 +41,88 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Permission Relationship
+    |--------------------------------------------------------------------------
+    */
+
     public function adminPermission()
-{
-    return $this->hasOne(\App\Models\AdminPermission::class);
-}
-
-
-public function hasAdminPermission(
-    string $feature,
-    string $minimumLevel = 'view'
-): bool {
-    $permissions = $this->adminPermission?->permissions ?? [];
-
-    $levels = [
-        'none' => 0,
-        'view' => 1,
-        'full' => 2,
-    ];
-
-    if (
-        !array_key_exists($feature, \App\Support\AdminPermissions::FEATURES) ||
-        !isset($levels[$minimumLevel])
-    ) {
-        return false;
+    {
+        return $this->hasOne(\App\Models\AdminPermission::class);
     }
 
-    $currentLevel = $permissions[$feature] ?? 'none';
+    /*
+    |--------------------------------------------------------------------------
+    | Check Admin Permission
+    |--------------------------------------------------------------------------
+    */
 
-    return isset($levels[$currentLevel]) &&
-        $levels[$currentLevel] >= $levels[$minimumLevel];
-}
+    public function hasAdminPermission(
+        string $feature,
+        string $minimumLevel = 'view'
+    ): bool {
 
-/**
- * Get the first admin page this user can access.
- */
-public function firstAccessibleAdminRoute(): ?string
-{
-    $pages = [
-        'dashboard' => 'admin.dashboard',
-        'user_management' => 'admin.users',
-        'buildings' => 'buildings.index',
-        'rooms' => 'admin.rooms.index',
-        'schedule_management' => 'admin.schedules',
-        'campus_map' => 'admin.campus-map',
-        'reports' => 'admin.reports',
-    ];
-
-    foreach ($pages as $feature => $route) {
-        if (
-            $this->hasAdminPermission($feature, 'view')
-            && \Illuminate\Support\Facades\Route::has($route)
-        ) {
-            return $route;
+        // Validate requested feature.
+        if (!array_key_exists(
+            $feature,
+            \App\Support\AdminPermissions::FEATURES
+        )) {
+            return false;
         }
+
+        $levels = [
+            'none' => 0,
+            'view' => 1,
+            'full' => 2,
+        ];
+
+        if (!isset($levels[$minimumLevel])) {
+            return false;
+        }
+
+        // Super Admin has unrestricted access.
+        if ($this->role === 'super_admin') {
+            return true;
+        }
+
+        $permissions = $this->adminPermission?->permissions ?? [];
+
+        $currentLevel = $permissions[$feature] ?? 'none';
+
+        return isset($levels[$currentLevel]) &&
+            $levels[$currentLevel] >= $levels[$minimumLevel];
     }
 
-    return null;
-}
+    /*
+    |--------------------------------------------------------------------------
+    | First Accessible Admin Route
+    |--------------------------------------------------------------------------
+    */
 
+    public function firstAccessibleAdminRoute(): ?string
+    {
+        $pages = [
+            'dashboard' => 'admin.dashboard',
+            'user_management' => 'admin.users',
+            'buildings' => 'buildings.index',
+            'rooms' => 'admin.rooms.index',
+            'schedule_management' => 'admin.schedules',
+            'campus_map' => 'admin.campus-map',
+            'room_monitoring' => 'admin.room-monitoring',
+            'reports' => 'admin.reports',
+        ];
+
+        foreach ($pages as $feature => $route) {
+
+            if (
+                $this->hasAdminPermission($feature, 'view') &&
+                \Illuminate\Support\Facades\Route::has($route)
+            ) {
+                return $route;
+            }
+        }
+
+        return null;
+    }
 }
