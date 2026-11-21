@@ -1586,22 +1586,11 @@ Alpine.data(
             this.upHandler = () => this.stopMarkerDrag();
         },
 
-        editor() {
-            let element = this.$root.parentElement;
+       editor() {
+    const editorRoot = this.$el.closest('[x-data^="campusMapEditor"]');
 
-            while (element) {
-                if (
-                    element.hasAttribute('x-data') &&
-                    element.getAttribute('x-data').startsWith('campusMapEditor')
-                ) {
-                    return Alpine.$data(element);
-                }
-
-                element = element.parentElement;
-            }
-
-            return null;
-        },
+    return editorRoot ? Alpine.$data(editorRoot) : null;
+},
 
         selectMarker() {
             const editor = this.editor();
