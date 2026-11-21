@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Imports\SchedulesImport;
 use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\User;
@@ -12,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\SchedulesImport;
 
 class ScheduleImportController extends Controller
 {
@@ -46,7 +46,6 @@ class ScheduleImportController extends Controller
 
         session([
             'schedule_import_preview' => $schedules,
-
             'schedule_import_metadata' => [
                 'semester' => $request->semester,
                 'school_year' => $request->school_year,
@@ -79,31 +78,53 @@ class ScheduleImportController extends Controller
 
         $metadata = session('schedule_import_metadata', []);
 
-        $total = count($schedules);
+        $scheduleCollection = collect($schedules);
 
-        $new = collect($schedules)
+        $total = $scheduleCollection->count();
+
+        $new = $scheduleCollection
             ->where('status', 'new')
             ->count();
 
-        $duplicates = collect($schedules)
+        $duplicates = $scheduleCollection
             ->where('status', 'duplicate')
             ->count();
 
-        $invalid = collect($schedules)
+        $invalid = $scheduleCollection
             ->where('status', 'invalid')
             ->count();
 
-        // New and duplicate rows can be reviewed and checked again.
-        $eligibleRows = collect($schedules)->filter(function ($row) {
-            return in_array($row['status'] ?? 'invalid', ['new', 'duplicate'], true)
-                && !empty($row['room_id'])
-                && Room::whereKey($row['room_id'])->exists();
+        /*
+         * Load room IDs once instead of querying the database
+         * separately for every preview row.
+         */
+        $roomIds = array_fill_keys(
+            Room::pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all(),
+            true
+        );
+
+        $eligibleRows = $scheduleCollection->filter(function ($row) use ($roomIds) {
+            $roomId = $row['room_id'] ?? null;
+
+            return in_array(
+                $row['status'] ?? 'invalid',
+                ['new', 'duplicate'],
+                true
+            )
+                && !empty($roomId)
+                && isset($roomIds[(string) $roomId]);
         });
 
         $ready = $eligibleRows->count();
 
-        $missingRooms = collect($schedules)->filter(function ($row) {
-            return in_array($row['status'] ?? 'invalid', ['new', 'duplicate'], true)
+        $missingRooms = $scheduleCollection->filter(function ($row) {
+            return in_array(
+                $row['status'] ?? 'invalid',
+                ['new', 'duplicate'],
+                true
+            )
                 && empty($row['room_id']);
         })->count();
 
@@ -116,10 +137,18 @@ class ScheduleImportController extends Controller
             ->orderBy('first_name')
             ->get();
 
-        // Existing schedules are sent to the preview so the browser can
-        // immediately detect room/instructor overlaps against saved records.
-        $conflictSchedules = Schedule::where('semester', $metadata['semester'] ?? null)
-            ->where('school_year', $metadata['school_year'] ?? null)
+        /*
+         * Fetch existing schedules once for the selected semester
+         * and school year.
+         */
+        $conflictSchedules = Schedule::where(
+            'semester',
+            $metadata['semester'] ?? null
+        )
+            ->where(
+                'school_year',
+                $metadata['school_year'] ?? null
+            )
             ->get([
                 'room_id',
                 'instructor_id',
@@ -167,45 +196,74 @@ class ScheduleImportController extends Controller
                 );
         }
 
+        /*
+         * Validate basic input types first.
+         * Actual room and instructor existence is checked against
+         * preloaded ID sets below to avoid repeated database queries.
+         */
         $request->validate([
             'rows' => 'sometimes|array',
-
-            'rows.*.room_id' => [
-                'nullable',
-                'integer',
-                'exists:rooms,id',
-            ],
-
-            'rows.*.instructor_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id')->where(function ($query) {
-                    $query->where('role', 'instructor')
-                        ->where('status', 'active');
-                }),
-            ],
-
+            'rows.*.room_id' => 'nullable|integer',
+            'rows.*.instructor_id' => 'nullable|integer',
             'rows.*.day' => 'nullable|string|max:30',
-
             'rows.*.start_time' => 'nullable|date_format:H:i:s,H:i',
-
             'rows.*.end_time' => 'nullable|date_format:H:i:s,H:i',
         ]);
 
         $editedRows = $request->input('rows', []);
 
-        // Merge submitted room edits and block confirmation while any otherwise
-        // importable row still has no valid room assignment.
+        /*
+         * Load valid room IDs and active instructor IDs once.
+         */
+        $roomIds = array_fill_keys(
+            Room::pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all(),
+            true
+        );
+
+        $instructorIds = array_fill_keys(
+            User::where('role', 'instructor')
+                ->where('status', 'active')
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all(),
+            true
+        );
+
+        /*
+         * Check submitted corrections against the preloaded IDs.
+         */
         $unresolvedRooms = [];
+
         foreach ($schedules as $index => $originalRow) {
-            if (!in_array($originalRow['status'] ?? 'invalid', ['new', 'duplicate'], true)) {
+            if (!in_array(
+                $originalRow['status'] ?? 'invalid',
+                ['new', 'duplicate'],
+                true
+            )) {
                 continue;
             }
 
-            $submittedRoomId = $editedRows[$index]['room_id'] ?? ($originalRow['room_id'] ?? null);
+            $submittedRoomId = $editedRows[$index]['room_id']
+                ?? ($originalRow['room_id'] ?? null);
 
-            if (empty($submittedRoomId) || !Room::whereKey($submittedRoomId)->exists()) {
+            if (
+                empty($submittedRoomId) ||
+                !isset($roomIds[(string) $submittedRoomId])
+            ) {
                 $unresolvedRooms[] = $index + 1;
+            }
+
+            if (
+                isset($editedRows[$index]['instructor_id']) &&
+                $editedRows[$index]['instructor_id'] !== '' &&
+                !isset($instructorIds[(string) $editedRows[$index]['instructor_id']])
+            ) {
+                throw ValidationException::withMessages([
+                    "rows.{$index}.instructor_id" =>
+                        'The selected instructor is invalid or inactive.',
+                ]);
             }
         }
 
@@ -213,7 +271,8 @@ class ScheduleImportController extends Controller
             return redirect()
                 ->route('admin.schedules.preview')
                 ->withErrors([
-                    'rooms' => 'Import blocked. Assign a valid classroom to every eligible row. Rows missing a room: '
+                    'rooms' =>
+                        'Import blocked. Assign a valid classroom to every eligible row. Rows missing a room: '
                         . implode(', ', $unresolvedRooms),
                 ]);
         }
@@ -228,11 +287,15 @@ class ScheduleImportController extends Controller
             $schedules,
             $editedRows,
             $metadata,
+            $roomIds,
+            $instructorIds,
             &$imported,
             &$skipped,
             &$conflictCount
         ) {
-            // Load existing schedules for this semester and school year.
+            /*
+             * Load existing schedules once.
+             */
             $existingSchedules = Schedule::where(
                 'semester',
                 $metadata['semester'] ?? null
@@ -241,17 +304,41 @@ class ScheduleImportController extends Controller
                     'school_year',
                     $metadata['school_year'] ?? null
                 )
-                ->get();
+                ->get([
+                    'room_id',
+                    'instructor_id',
+                    'day',
+                    'start_time',
+                    'end_time',
+                ])
+                ->map(fn ($schedule) => [
+                    'room_id' => $schedule->room_id,
+                    'instructor_id' => $schedule->instructor_id,
+                    'day' => $schedule->day,
+                    'start_time' => (string) $schedule->start_time,
+                    'end_time' => (string) $schedule->end_time,
+                ]);
 
-            // Keep track of schedules accepted in this import.
-            $acceptedRows = [];
+            /*
+             * Build a conflict index for existing schedules.
+             * This avoids comparing every imported row with every
+             * existing schedule.
+             */
+            $conflictIndex = [];
+
+            foreach ($existingSchedules as $key => $existing) {
+                $this->addToConflictIndex(
+                    $conflictIndex,
+                    $existing,
+                    'existing_' . $key
+                );
+            }
 
             foreach ($schedules as $index => $originalRow) {
-
                 $row = $originalRow;
 
                 /*
-                 * Allow both new and duplicate rows to be reviewed.
+                 * Only new and duplicate rows are eligible for review.
                  * Invalid rows remain skipped.
                  */
                 if (!in_array(
@@ -263,9 +350,10 @@ class ScheduleImportController extends Controller
                     continue;
                 }
 
-                // Apply user edits from the preview page.
+                /*
+                 * Apply admin corrections.
+                 */
                 if (isset($editedRows[$index])) {
-
                     $edits = $editedRows[$index];
 
                     foreach ([
@@ -275,7 +363,6 @@ class ScheduleImportController extends Controller
                         'start_time',
                         'end_time',
                     ] as $field) {
-
                         if (array_key_exists($field, $edits)) {
                             $row[$field] = $edits[$field] === ''
                                 ? null
@@ -284,9 +371,10 @@ class ScheduleImportController extends Controller
                     }
                 }
 
-                // Normalize HTML time inputs to H:i:s.
+                /*
+                 * Normalize HTML time inputs.
+                 */
                 foreach (['start_time', 'end_time'] as $field) {
-
                     if (!empty($row[$field])) {
                         $row[$field] = $this->normalizeTime(
                             $row[$field]
@@ -294,7 +382,9 @@ class ScheduleImportController extends Controller
                     }
                 }
 
-                // Check required information.
+                /*
+                 * Check required information.
+                 */
                 if (
                     empty($row['subject_code']) ||
                     empty($row['subject_name']) ||
@@ -309,80 +399,51 @@ class ScheduleImportController extends Controller
                     continue;
                 }
 
-                // Check time range.
+                /*
+                 * Check time range.
+                 */
                 if ($row['end_time'] <= $row['start_time']) {
                     $skipped++;
                     continue;
                 }
 
-                // A valid classroom is mandatory for every imported schedule.
-                if (empty($row['room_id']) || !Room::whereKey($row['room_id'])->exists()) {
+                /*
+                 * Verify room using the preloaded ID set.
+                 */
+                if (!isset($roomIds[(string) $row['room_id']])) {
                     $skipped++;
                     continue;
                 }
 
-                // Verify selected instructor.
-                if (!empty($row['instructor_id'])) {
-
-                    $validInstructor = User::whereKey(
-                        $row['instructor_id']
-                    )
-                        ->where('role', 'instructor')
-                        ->where('status', 'active')
-                        ->exists();
-
-                    if (!$validInstructor) {
-                        $skipped++;
-                        continue;
-                    }
+                /*
+                 * Verify instructor using the preloaded ID set.
+                 */
+                if (
+                    !empty($row['instructor_id']) &&
+                    !isset($instructorIds[(string) $row['instructor_id']])
+                ) {
+                    $skipped++;
+                    continue;
                 }
 
                 /*
-                 * Recheck conflicts against existing database schedules.
+                 * Recheck conflicts using the indexed schedules.
                  */
-                $hasConflict = false;
-
-                foreach ($existingSchedules as $existing) {
-
-                    if ($this->hasConflict($row, [
-                        'room_id' => $existing->room_id,
-                        'instructor_id' => $existing->instructor_id,
-                        'day' => $existing->day,
-                        'start_time' => $existing->start_time,
-                        'end_time' => $existing->end_time,
-                    ])) {
-                        $hasConflict = true;
-                        break;
-                    }
-                }
-
-                /*
-                 * Recheck conflicts against previously accepted upload rows.
-                 */
-                if (!$hasConflict) {
-
-                    foreach ($acceptedRows as $accepted) {
-
-                        if ($this->hasConflict($row, $accepted)) {
-                            $hasConflict = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Abort the entire import if any conflict remains. This prevents
-                // a partial import where some rows are saved and others silently skipped.
-                if ($hasConflict) {
+                if ($this->hasIndexedConflict($row, $conflictIndex)) {
                     $conflictCount++;
 
                     throw ValidationException::withMessages([
-                        'rows' => 'Import cancelled: a room or instructor conflict was detected during final validation. Review the preview and resolve every conflict before trying again.',
+                        'rows' =>
+                            'Import cancelled: a room or instructor conflict was detected during final validation. Review the preview and resolve every conflict before trying again.',
                     ]);
                 }
 
-                // Save schedule.
+                /*
+                 * Save schedule.
+                 * Keep Eloquent create() to preserve model events.
+                 */
                 Schedule::create([
-                    'room_id' => $row['room_id'] ?: null,
+                    'room_id' => $row['room_id'],
                     'instructor_id' => $row['instructor_id'] ?: null,
 
                     'subject_code' => $row['subject_code'],
@@ -402,20 +463,23 @@ class ScheduleImportController extends Controller
                     'status' => 'scheduled',
                 ]);
 
-                // Add successfully imported row to conflict checking.
-                $acceptedRows[] = [
-                    'room_id' => $row['room_id'],
-                    'instructor_id' => $row['instructor_id'],
-                    'day' => $row['day'],
-                    'start_time' => $row['start_time'],
-                    'end_time' => $row['end_time'],
-                ];
+                /*
+                 * Add the accepted schedule to the index so subsequent
+                 * uploaded rows are checked against it.
+                 */
+                $this->addToConflictIndex(
+                    $conflictIndex,
+                    $row,
+                    'imported_' . $index
+                );
 
                 $imported++;
             }
         });
 
-        // Clear import preview after successful transaction.
+        /*
+         * Clear preview only after a successful transaction.
+         */
         session()->forget([
             'schedule_import_preview',
             'schedule_import_metadata',
@@ -429,6 +493,74 @@ class ScheduleImportController extends Controller
                 . "{$skipped} records skipped. "
                 . "{$conflictCount} additional conflicts detected during confirmation."
             );
+    }
+
+    /**
+     * Add a schedule to the conflict index.
+     */
+    private function addToConflictIndex(
+        array &$index,
+        array $row,
+        string $key
+    ): void {
+        $days = $this->dayTokens($row['day'] ?? '');
+
+        foreach ($days as $day) {
+            if (!empty($row['room_id'])) {
+                $resourceKey = 'room:' . $row['room_id'];
+
+                $index[$day][$resourceKey][$key] = $row;
+            }
+
+            if (!empty($row['instructor_id'])) {
+                $resourceKey = 'instructor:' . $row['instructor_id'];
+
+                $index[$day][$resourceKey][$key] = $row;
+            }
+        }
+    }
+
+    /**
+     * Check conflicts only against schedules sharing the same day
+     * and either the same room or the same instructor.
+     */
+    private function hasIndexedConflict(
+        array $row,
+        array $index
+    ): bool {
+        $candidates = [];
+
+        $days = $this->dayTokens($row['day'] ?? '');
+
+        foreach ($days as $day) {
+            if (!isset($index[$day])) {
+                continue;
+            }
+
+            if (!empty($row['room_id'])) {
+                $resourceKey = 'room:' . $row['room_id'];
+
+                foreach ($index[$day][$resourceKey] ?? [] as $key => $candidate) {
+                    $candidates[$key] = $candidate;
+                }
+            }
+
+            if (!empty($row['instructor_id'])) {
+                $resourceKey = 'instructor:' . $row['instructor_id'];
+
+                foreach ($index[$day][$resourceKey] ?? [] as $key => $candidate) {
+                    $candidates[$key] = $candidate;
+                }
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if ($this->hasConflict($row, $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -505,7 +637,6 @@ class ScheduleImportController extends Controller
 
     /**
      * Check whether two schedules share a day.
-     * Supports Th and Su as two-letter tokens.
      */
     private function sharesDay(string $daysA, string $daysB): bool
     {
@@ -516,15 +647,16 @@ class ScheduleImportController extends Controller
     }
 
     /**
-     * Extract day tokens.
+     * Extract normalized day tokens.
+     * Supports Th and Su as two-letter tokens.
      */
     private function dayTokens(string $days): array
     {
         preg_match_all('/Th|Su|[MTWFS]/i', $days, $matches);
 
-        return array_map(
+        return array_values(array_unique(array_map(
             fn ($day) => strtoupper($day),
             $matches[0]
-        );
+        )));
     }
 }

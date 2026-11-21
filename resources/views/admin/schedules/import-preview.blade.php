@@ -1,5 +1,3 @@
-
-
 @extends('layouts.admin')
 
 
@@ -15,6 +13,20 @@
 @php
 
     $metadata = session('schedule_import_metadata', []);
+    $instructorsById = collect($instructors)->keyBy('id');
+    $instructorSearchOptions = collect($instructors)->map(function ($instructor) {
+        return [
+            'id' => $instructor->id,
+            'label' => trim($instructor->first_name . ' ' . $instructor->last_name . ' (' . $instructor->employee_id . ')'),
+        ];
+    })->values();
+    $roomsById = collect($rooms)->keyBy('id');
+    $roomSearchOptions = collect($rooms)->map(function ($room) {
+        return [
+            'id' => $room->id,
+            'label' => trim($room->room_number . ' — ' . ($room->building->building_name ?? 'Building')),
+        ];
+    })->values();
 
 @endphp
 
@@ -122,9 +134,11 @@
 
             <p class="text-sm text-slate-500">Total Rows</p>
 
-           <p id="summary-total-count" class="mt-2 text-3xl font-bold text-slate-800">
-    {{ $total }}
-</p>
+            <p class="mt-2 text-3xl font-bold text-slate-800">
+
+                {{ $total }}
+
+            </p>
 
         </div>
 
@@ -134,9 +148,11 @@
 
             <p class="text-sm text-slate-500">New Records</p>
 
-            <p id="summary-new-count" class="mt-2 text-3xl font-bold text-green-600">
-    {{ $new }}
-</p>
+            <p class="mt-2 text-3xl font-bold text-green-600">
+
+                {{ $new }}
+
+            </p>
 
         </div>
 
@@ -146,9 +162,11 @@
 
             <p class="text-sm text-slate-500">Duplicates / Conflicts</p>
 
-           <p id="summary-conflict-count" class="mt-2 text-3xl font-bold text-yellow-600">
-    {{ $duplicates }}
-</p>
+            <p class="mt-2 text-3xl font-bold text-yellow-600">
+
+                {{ $duplicates }}
+
+            </p>
 
         </div>
 
@@ -158,9 +176,11 @@
 
             <p class="text-sm text-slate-500">Invalid</p>
 
-            <p id="summary-invalid-count" class="mt-2 text-3xl font-bold text-red-600">
-    {{ $invalid }}
-</p>
+            <p class="mt-2 text-3xl font-bold text-red-600">
+
+                {{ $invalid }}
+
+            </p>
 
         </div>
 
@@ -275,7 +295,17 @@
 
             @csrf
 
-
+            {{-- Render the instructor choices once, instead of once per schedule row. --}}
+            <datalist id="instructor-options">
+                @foreach ($instructorSearchOptions as $option)
+                    <option value="{{ $option['label'] }}"></option>
+                @endforeach
+            </datalist>
+            <datalist id="room-options">
+                @foreach ($roomSearchOptions as $option)
+                    <option value="{{ $option['label'] }}"></option>
+                @endforeach
+            </datalist>
 
             <div class="overflow-x-auto">
 
@@ -443,47 +473,27 @@
 
 
 
-                                        <select
+                                        @php
+                                            $selectedInstructor = $instructorsById->get($schedule['instructor_id'] ?? null);
+                                            $selectedInstructorLabel = $selectedInstructor
+                                                ? trim($selectedInstructor->first_name . ' ' . $selectedInstructor->last_name . ' (' . $selectedInstructor->employee_id . ')')
+                                                : '';
+                                        @endphp
 
-                                            name="rows[{{ $index }}][instructor_id]"
-
+                                        <input
+                                            type="text"
+                                            list="instructor-options"
+                                            value="{{ $selectedInstructorLabel }}"
+                                            placeholder="Search instructor..."
+                                            autocomplete="off"
+                                            data-instructor-search
                                             class="w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
 
-
-
-                                            <option value="">Unassigned</option>
-
-
-
-                                            @foreach ($instructors as $instructor)
-
-
-
-                                                <option
-
-                                                    value="{{ $instructor->id }}"
-
-                                                    @selected((string) ($schedule['instructor_id'] ?? '') === (string) $instructor->id)>
-
-
-
-                                                    {{ $instructor->first_name }}
-
-                                                    {{ $instructor->last_name }}
-
-                                                    ({{ $instructor->employee_id }})
-
-
-
-                                                </option>
-
-
-
-                                            @endforeach
-
-
-
-                                        </select>
+                                        <input
+                                            type="hidden"
+                                            name="rows[{{ $index }}][instructor_id]"
+                                            value="{{ $selectedInstructor->id ?? '' }}"
+                                            data-instructor-id>
 
 
 
@@ -517,46 +527,27 @@
 
 
 
-                                        <select
+                                        @php
+                                            $selectedRoom = $roomsById->get($schedule['room_id'] ?? null);
+                                            $selectedRoomLabel = $selectedRoom
+                                                ? trim($selectedRoom->room_number . ' — ' . ($selectedRoom->building->building_name ?? 'Building'))
+                                                : '';
+                                        @endphp
 
+                                        <input
+                                            type="text"
+                                            list="room-options"
+                                            value="{{ $selectedRoomLabel }}"
+                                            placeholder="Search classroom..."
+                                            autocomplete="off"
+                                            data-room-search
+                                            class="w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
+
+                                        <input
+                                            type="hidden"
                                             name="rows[{{ $index }}][room_id]"
-
-                                                                                        data-room-select
-class="w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#0E4C6B] focus:ring-[#0E4C6B]">
-
-
-
-                                            <option value="">Unassigned</option>
-
-
-
-                                            @foreach ($rooms as $room)
-
-
-
-                                                <option
-
-                                                    value="{{ $room->id }}"
-
-                                                    @selected((string) ($schedule['room_id'] ?? '') === (string) $room->id)>
-
-
-
-                                                    {{ $room->room_number }}
-
-                                                    — {{ $room->building->building_name ?? 'Building' }}
-
-
-
-                                                </option>
-
-
-
-                                            @endforeach
-
-
-
-                                        </select>
+                                            value="{{ $selectedRoom->id ?? '' }}"
+                                            data-room-select>
 
 
 
@@ -826,7 +817,7 @@ class="w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#
 
                             @disabled($ready === 0 || $missingRooms > 0)
 
-                           
+                            onclick="return confirm('Are you sure you want to import the eligible schedules?')"
 
                             id="confirm-import-button" class="rounded-xl bg-[#0E4C6B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0B3D56] transition disabled:cursor-not-allowed disabled:opacity-50">
 
@@ -889,45 +880,43 @@ class="w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
-    // Find the form through the Confirm Import button.
-    const confirmButton = document.getElementById('confirm-import-button');
-    const form = confirmButton ? confirmButton.closest('form') : null;
-
-    if (!form) {
-        console.error('Schedule import form not found.');
-        return;
-    }
-    form.addEventListener('submit', function (event) {
-    event.preventDefault();
-
-    Swal.fire({
-        title: 'Import Schedules?',
-        text: 'Are you sure you want to import all eligible schedules?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#0E4C6B',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, Import Schedules',
-        cancelButtonText: 'Cancel',
-        reverseButtons: true
-    }).then(function (result) {
-        if (result.isConfirmed) {
-            HTMLFormElement.prototype.submit.call(form);
-        }
-    });
-});
+    const form = document.querySelector('form[action="{{ route('admin.schedules.store') }}"]');
+    if (!form) return;
 
     const eligibleCount = document.getElementById('eligible-count');
     const missingCount = document.getElementById('missing-room-count');
+    const confirmButton = document.getElementById('confirm-import-button');
     const warning = document.getElementById('missing-room-warning');
-
-    const summaryNewCount = document.getElementById('summary-new-count');
-    const summaryConflictCount = document.getElementById('summary-conflict-count');
-    const summaryInvalidCount = document.getElementById('summary-invalid-count');
-
-    const baseInvalidCount = Number({{ (int) $invalid }});
     const savedSchedules = @json($conflictSchedules);
+    const instructorOptions = @json($instructorSearchOptions);
+    const roomOptions = @json($roomSearchOptions);
+    const instructorIdsByLabel = new Map(
+        instructorOptions.map(instructor => [instructor.label.trim().toLowerCase(), String(instructor.id)])
+    );
+    const roomIdsByLabel = new Map(
+        roomOptions.map(room => [room.label.trim().toLowerCase(), String(room.id)])
+    );
+
+    // Each shared datalist is rendered once; each row submits its existing hidden ID field.
+    function connectSearchToId(searchSelector, idSelector, idMap) {
+        form.querySelectorAll(searchSelector).forEach(searchInput => {
+            const cell = searchInput.closest('td');
+            const idInput = cell?.querySelector(idSelector);
+            if (!idInput) return;
+
+            const syncId = () => {
+                const key = searchInput.value.trim().toLowerCase();
+                idInput.value = key ? (idMap.get(key) || '') : '';
+                refreshValidation();
+            };
+
+            searchInput.addEventListener('input', syncId);
+            searchInput.addEventListener('change', syncId);
+        });
+    }
+
+    connectSearchToId('[data-instructor-search]', '[data-instructor-id]', instructorIdsByLabel);
+    connectSearchToId('[data-room-search]', '[data-room-select]', roomIdsByLabel);
 
     const rows = Array.from(form.querySelectorAll('tbody tr')).filter(row => {
         return row.querySelector('[name$="[room_id]"]');
@@ -950,7 +939,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 i += 2;
             } else if ('MTWFS'.includes(cleaned[i])) {
                 tokens.push(cleaned[i]);
-                i++;
+                i += 1;
             } else {
                 return { tokens: [], valid: false };
             }
@@ -964,14 +953,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function toSeconds(value) {
         if (!value) return null;
-
         const parts = value.split(':').map(Number);
-
-        if (parts.length < 2 || parts.some(Number.isNaN)) {
-            return null;
-        }
-
-        return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+        if (parts.length < 2 || parts.some(Number.isNaN)) return null;
+        return (parts[0] * 3600) + (parts[1] * 60) + (parts[2] || 0);
     }
 
     function overlaps(aStart, aEnd, bStart, bEnd) {
@@ -991,14 +975,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const problems = [];
 
-        if (!room?.value) {
-            problems.push('Missing classroom. Select a valid room before importing.');
-        }
-
-        if (!dayResult.valid) {
-            problems.push('Invalid or missing day.');
-        }
-
+        if (!room?.value) problems.push('Missing classroom. Select a valid room before importing.');
+        if (!dayResult.valid) problems.push('Invalid or missing day. Use M, T, W, Th, F, S, or Su.');
         if (startSeconds === null || endSeconds === null) {
             problems.push('Missing or invalid start/end time.');
         } else if (endSeconds <= startSeconds) {
@@ -1019,91 +997,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function refreshValidation() {
-
         const data = rows.map(rowData);
 
-        // Check against existing database schedules.
-        data.forEach(item => {
+        // Compare imported rows against schedules already saved in the database.
+        data.forEach((item, index) => {
+            if (!item.dayValid || item.startSeconds === null || item.endSeconds === null || item.endSeconds <= item.startSeconds) return;
 
-            if (
-                !item.dayValid ||
-                item.startSeconds === null ||
-                item.endSeconds === null ||
-                item.endSeconds <= item.startSeconds
-            ) return;
-
-            savedSchedules.forEach(saved => {
-
+            savedSchedules.forEach((saved, savedIndex) => {
                 const savedDays = parseDays(saved.day);
+                const savedStart = toSeconds(String(saved.start_time || '').substring(0, 8));
+                const savedEnd = toSeconds(String(saved.end_time || '').substring(0, 8));
 
-                const savedStart = toSeconds(
-                    String(saved.start_time || '').substring(0, 8)
-                );
+                if (!savedDays.valid || savedStart === null || savedEnd === null) return;
 
-                const savedEnd = toSeconds(
-                    String(saved.end_time || '').substring(0, 8)
-                );
-
-                if (!savedDays.valid || savedStart === null || savedEnd === null) {
-                    return;
-                }
-
-                const sameDay = item.days.some(day =>
-                    savedDays.tokens.includes(day)
-                );
-
-                const timeOverlap = overlaps(
-                    item.startSeconds,
-                    item.endSeconds,
-                    savedStart,
-                    savedEnd
-                );
-
+                const sameDay = item.days.some(day => savedDays.tokens.includes(day));
+                const timeOverlap = overlaps(item.startSeconds, item.endSeconds, savedStart, savedEnd);
                 if (!sameDay || !timeOverlap) return;
 
-                if (
-                    item.roomId &&
-                    String(item.roomId) === String(saved.room_id || '')
-                ) {
+                if (item.roomId && String(item.roomId) === String(saved.room_id || '')) {
                     item.conflicts.push('Room conflict with an existing saved schedule.');
                 }
 
-                if (
-                    item.instructorId &&
-                    String(item.instructorId) === String(saved.instructor_id || '')
-                ) {
+                if (item.instructorId && String(item.instructorId) === String(saved.instructor_id || '')) {
                     item.conflicts.push('Instructor conflict with an existing saved schedule.');
                 }
-
             });
-
         });
 
-        // Check imported rows against one another.
+        // Compare every eligible row with every other imported row.
         for (let i = 0; i < data.length; i++) {
-
             const a = data[i];
 
-            if (
-                !a.dayValid ||
-                a.startSeconds === null ||
-                a.endSeconds === null ||
-                a.endSeconds <= a.startSeconds
-            ) continue;
+            if (!a.dayValid || a.startSeconds === null || a.endSeconds === null || a.endSeconds <= a.startSeconds) {
+                continue;
+            }
 
             for (let j = i + 1; j < data.length; j++) {
-
                 const b = data[j];
 
-                if (
-                    !b.dayValid ||
-                    b.startSeconds === null ||
-                    b.endSeconds === null ||
-                    b.endSeconds <= b.startSeconds
-                ) continue;
+                if (!b.dayValid || b.startSeconds === null || b.endSeconds === null || b.endSeconds <= b.startSeconds) {
+                    continue;
+                }
 
                 const sameDay = a.days.some(day => b.days.includes(day));
-
                 const timeOverlap = overlaps(
                     a.startSeconds,
                     a.endSeconds,
@@ -1114,15 +1050,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!sameDay || !timeOverlap) continue;
 
                 if (a.roomId && a.roomId === b.roomId) {
-                    a.conflicts.push(`Room conflict with row ${j + 1}.`);
-                    b.conflicts.push(`Room conflict with row ${i + 1}.`);
+                    a.conflicts.push(`Room conflict with row ${j + 1}: same classroom, day, and overlapping time.`);
+                    b.conflicts.push(`Room conflict with row ${i + 1}: same classroom, day, and overlapping time.`);
                 }
 
                 if (a.instructorId && a.instructorId === b.instructorId) {
-                    a.conflicts.push(`Instructor conflict with row ${j + 1}.`);
-                    b.conflicts.push(`Instructor conflict with row ${i + 1}.`);
+                    a.conflicts.push(`Instructor conflict with row ${j + 1}: same instructor, day, and overlapping time.`);
+                    b.conflicts.push(`Instructor conflict with row ${i + 1}: same instructor, day, and overlapping time.`);
                 }
-
             }
         }
 
@@ -1132,12 +1067,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let conflictRows = 0;
 
         data.forEach(item => {
-
             const status = item.row.querySelector('[data-row-status]');
             const remarks = item.row.querySelector('[data-row-remarks]');
 
             const originalRemarks = remarks?.dataset.originalRemarks || '';
-
             const persistentRemarks = originalRemarks
                 .replace(/Classroom ['"].*?['"] was not found\.\s*/gi, '')
                 .replace(/Missing classroom\. Select a valid room before importing\.\s*/gi, '')
@@ -1148,105 +1081,49 @@ document.addEventListener('DOMContentLoaded', function () {
                 .trim();
 
             const messages = [...item.problems, ...item.conflicts];
-
-            if (persistentRemarks) {
-                messages.unshift(persistentRemarks);
-            }
+            if (persistentRemarks) messages.unshift(persistentRemarks);
 
             const hasMissingRoom = !item.roomId;
-
             const hasInvalid = item.problems.some(problem =>
                 problem.startsWith('Invalid') ||
                 problem.startsWith('Missing or invalid') ||
                 problem.startsWith('End time')
             );
-
             const hasConflict = item.conflicts.length > 0;
 
             if (hasMissingRoom) missingRooms++;
             if (hasInvalid) invalidRows++;
             if (hasConflict) conflictRows++;
 
-            const rowReady =
-                !hasMissingRoom &&
-                !hasInvalid &&
-                !hasConflict;
-
+            const rowReady = !hasMissingRoom && !hasInvalid && !hasConflict;
             if (rowReady) eligible++;
 
-            // Update row status.
             if (status) {
-
                 if (hasMissingRoom) {
-
                     status.textContent = 'Missing Room';
-                    status.className =
-                        'inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700';
-
+                    status.className = 'inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700';
                 } else if (hasInvalid) {
-
                     status.textContent = 'Invalid';
-                    status.className =
-                        'inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700';
-
+                    status.className = 'inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700';
                 } else if (hasConflict) {
-
                     status.textContent = 'Conflict';
-                    status.className =
-                        'inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700';
-
+                    status.className = 'inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700';
                 } else {
-
                     status.textContent = 'Ready';
-                    status.className =
-                        'inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700';
-
+                    status.className = 'inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700';
                 }
             }
 
-            // Update row remarks.
             if (remarks) {
-
-                remarks.textContent = messages.length
-                    ? messages.join(' ')
-                    : 'No issues detected.';
-
-                remarks.className =
-                    'text-xs ' + (messages.length ? 'text-red-600' : 'text-green-600');
+                remarks.textContent = messages.length ? messages.join(' ') : 'No issues detected.';
+                remarks.className = 'text-xs ' + (messages.length ? 'text-red-600' : 'text-green-600');
             }
-
         });
 
-        // UPDATE ALL SUMMARY CARDS.
-        const totalRows = rows.length;
+        if (eligibleCount) eligibleCount.textContent = eligible;
+        if (missingCount) missingCount.textContent = missingRooms;
 
-        if (summaryNewCount) {
-            summaryNewCount.textContent = eligible;
-        }
-
-        if (summaryConflictCount) {
-            summaryConflictCount.textContent = conflictRows;
-        }
-
-        if (summaryInvalidCount) {
-            summaryInvalidCount.textContent =
-                baseInvalidCount + missingRooms + invalidRows;
-        }
-
-        if (eligibleCount) {
-            eligibleCount.textContent = eligible;
-        }
-
-        if (missingCount) {
-            missingCount.textContent = missingRooms;
-        }
-
-        // Block confirmation if any problem remains.
-        const blocked =
-            missingRooms > 0 ||
-            invalidRows > 0 ||
-            conflictRows > 0 ||
-            eligible === 0;
+        const blocked = missingRooms > 0 || invalidRows > 0 || conflictRows > 0 || eligible === 0;
 
         if (confirmButton) {
             confirmButton.disabled = blocked;
@@ -1254,31 +1131,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (warning) {
-
             warning.textContent = blocked
                 ? `Import is blocked: ${missingRooms} missing room(s), ${invalidRows} invalid row(s), and ${conflictRows} conflicting row(s). Resolve all issues before confirming.`
                 : 'All rows passed preview validation. The server will perform a final conflict check before saving.';
-
             warning.classList.toggle('hidden', !blocked);
         }
-
     }
 
-    // Revalidate whenever any editable field changes.
     rows.forEach(row => {
-
         row.querySelectorAll('select, input').forEach(input => {
-
             input.addEventListener('change', refreshValidation);
             input.addEventListener('input', refreshValidation);
-
         });
-
     });
 
-    // Run validation immediately on page load.
     refreshValidation();
-
 });
 </script>
 
