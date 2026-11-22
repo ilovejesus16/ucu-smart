@@ -15,6 +15,9 @@ use App\Exports\UsersExport;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Hash;
+use App\Notifications\AccountCreatedNotification;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -302,46 +305,61 @@ class UserController extends Controller
     /**
      * Save Imported Instructors.
      */
-    public function storeImportedInstructors()
-    {
-        $instructors = session('instructor_import_preview', []);
-        $importedCount = 0;
+ 
+public function storeImportedInstructors()
+{
+    $instructors = session('instructor_import_preview', []);
+    $importedCount = 0;
+    $emailCount = 0;
 
-        foreach ($instructors as $instructor) {
-            if ($instructor['status'] !== 'new') {
-                continue;
-            }
-
-            User::create([
-                'employee_id' => $instructor['employee_id'],
-                'username' => $instructor['employee_id'],
-                'first_name' => $instructor['first_name'],
-                'last_name' => $instructor['last_name'],
-                'department' => $instructor['department'],
-                'email' => $instructor['email'],
-                'role' => 'instructor',
-                'status' => 'active',
-                'email_verified_at' => now(),
-                'password' => Hash::make($instructor['employee_id']),
-            ]);
-
-            $importedCount++;
+    foreach ($instructors as $instructor) {
+        if ($instructor['status'] !== 'new') {
+            continue;
         }
 
-        if ($importedCount > 0) {
-            $this->logActivity(
-                'Imported',
-                'Users',
-                "Imported {$importedCount} instructor account(s)."
+        $user = User::create([
+            'employee_id' => $instructor['employee_id'],
+            'username' => $instructor['employee_id'],
+            'first_name' => $instructor['first_name'],
+            'last_name' => $instructor['last_name'],
+            'department' => $instructor['department'],
+            'email' => $instructor['email'],
+            'role' => 'instructor',
+            'status' => 'active',
+            'email_verified_at' => now(),
+            'password' => Hash::make(Str::random(64)),
+        ]);
+
+        $importedCount++;
+
+        try {
+            $token = Password::broker()->createToken($user);
+            $user->notify(new AccountCreatedNotification($token));
+            $emailCount++;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error(
+                "Failed to send account setup email to instructor ID {$user->employee_id}: {$e->getMessage()}"
             );
         }
-
-        session()->forget('instructor_import_preview');
-
-        return redirect()
-            ->route('admin.users')
-            ->with('success', 'Instructors imported successfully.');
     }
+
+    if ($importedCount > 0) {
+        $this->logActivity(
+            'Imported',
+            'Users',
+            "Imported {$importedCount} instructor account(s)."
+        );
+    }
+
+    session()->forget('instructor_import_preview');
+
+    return redirect()
+        ->route('admin.users')
+        ->with(
+            'success',
+            "Instructors imported: {$importedCount}. Setup emails sent: {$emailCount}."
+        );
+}
 
     /**
      * Export Users.
@@ -419,46 +437,62 @@ class UserController extends Controller
     /**
      * Save Imported Students.
      */
-    public function storeImportedStudents()
-    {
-        $students = session('student_import_preview', []);
-        $importedCount = 0;
+ 
+public function storeImportedStudents()
+{
+    $students = session('student_import_preview', []);
+    $importedCount = 0;
+    $emailCount = 0;
 
-        foreach ($students as $student) {
-            if ($student['status'] !== 'new') {
-                continue;
-            }
-
-            User::create([
-                'student_id' => $student['student_id'],
-                'username' => $student['student_id'],
-                'first_name' => $student['first_name'],
-                'last_name' => $student['last_name'],
-                'course' => $student['course'],
-                'email' => $student['email'],
-                'role' => 'student',
-                'status' => 'active',
-                'email_verified_at' => now(),
-                'password' => Hash::make($student['student_id']),
-            ]);
-
-            $importedCount++;
+    foreach ($students as $student) {
+        if ($student['status'] !== 'new') {
+            continue;
         }
 
-        if ($importedCount > 0) {
-            $this->logActivity(
-                'Imported',
-                'Users',
-                "Imported {$importedCount} student account(s)."
+        $user = User::create([
+            'student_id' => $student['student_id'],
+            'username' => $student['student_id'],
+            'first_name' => $student['first_name'],
+            'last_name' => $student['last_name'],
+            'course' => $student['course'],
+            'email' => $student['email'],
+            'role' => 'student',
+            'status' => 'active',
+            'email_verified_at' => now(),
+            'password' => Hash::make(Str::random(64)),
+        ]);
+
+        $importedCount++;
+
+        try {
+            $token = Password::broker()->createToken($user);
+            $user->notify(new AccountCreatedNotification($token));
+            $emailCount++;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error(
+                "Failed to send account setup email to student ID {$user->student_id}: {$e->getMessage()}"
             );
         }
-
-        session()->forget('student_import_preview');
-
-        return redirect()
-            ->route('admin.users')
-            ->with('success', 'Students imported successfully.');
     }
+
+    if ($importedCount > 0) {
+        $this->logActivity(
+            'Imported',
+            'Users',
+            "Imported {$importedCount} student account(s)."
+        );
+    }
+
+    session()->forget('student_import_preview');
+
+    return redirect()
+        ->route('admin.users')
+        ->with(
+            'success',
+            "Students imported: {$importedCount}. Setup emails sent: {$emailCount}."
+        );
+}
+
 
     /**
      * Show User.
@@ -556,6 +590,7 @@ class UserController extends Controller
      * Create User.
      */
     
+
 public function store(Request $request)
 {
     $validated = $request->validate([
@@ -575,9 +610,6 @@ public function store(Request $request)
         'course' => 'nullable|string|max:255',
         'department' => 'nullable|string|max:255',
 
-        'password' => 'required|min:8',
-
-        // Permissions are accepted only for admin accounts.
         'permissions' => 'required_if:role,admin|array',
         'permissions.*' => Rule::in(array_keys(AdminPermissions::LEVELS)),
     ]);
@@ -595,7 +627,6 @@ public function store(Request $request)
         }
     }
 
-    // Determine username.
     if ($validated['role'] === 'student') {
         $username = $validated['student_id'];
     } elseif ($validated['role'] === 'instructor') {
@@ -604,7 +635,6 @@ public function store(Request $request)
         $username = $validated['username'];
     }
 
-    // Create the user with the existing account logic.
     $user = User::create([
         'role' => $validated['role'],
         'status' => $validated['status'],
@@ -623,14 +653,16 @@ public function store(Request $request)
         'email' => $validated['email'],
         'email_verified_at' => now(),
 
-        'password' => Hash::make($validated['password']),
+        'password' => Hash::make(Str::random(64)),
     ]);
 
-    // Save permissions only for admin accounts.
     if ($user->role === 'admin') {
         \App\Models\AdminPermission::updateOrCreate(
             ['user_id' => $user->id],
-            ['permissions' => array_replace(AdminPermissions::defaults(), $validated['permissions'])]
+            ['permissions' => array_replace(
+                AdminPermissions::defaults(),
+                $validated['permissions']
+            )]
         );
     }
 
@@ -640,9 +672,17 @@ public function store(Request $request)
         "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id})."
     );
 
+    // Send password setup email for active accounts.
+    if ($user->status === 'active') {
+        $token = Password::broker()->createToken($user);
+
+        $user->notify(new AccountCreatedNotification($token));
+    }
+
     return redirect()
         ->route('admin.users')
         ->with('success', 'User added successfully.');
 }
+
 
 }

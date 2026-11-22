@@ -112,6 +112,56 @@
                 </div>
             </div>
 
+{{-- CUSTOM CAMPUS MAP CONFIRMATION MODAL --}}
+<div
+    x-show="showConfirmationModal"
+    x-cloak
+    x-transition.opacity
+    @keydown.escape.window="cancelConfirmation()"
+    @click.self="cancelConfirmation()"
+    class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm"
+>
+    <div
+        x-show="showConfirmationModal"
+        x-transition
+        class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
+    >
+        <div class="p-6">
+            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v4m0 4h.01M10.29 3.86l-7.1 12.3A2 2 0 004.92 19h14.16a2 2 0 001.73-2.84l-7.1-12.3a2 2 0 00-3.46 0z"/>
+                </svg>
+            </div>
+
+            <h3 class="text-lg font-bold text-[#0E2958]" x-text="confirmationTitle"></h3>
+
+            <p class="mt-2 text-sm leading-relaxed text-slate-600" x-text="confirmationMessage"></p>
+
+            <p class="mt-2 text-xs text-slate-500" x-text="confirmationDetail"></p>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <button
+                type="button"
+                @click="cancelConfirmation()"
+                :disabled="saving"
+                class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+                Cancel
+            </button>
+
+            <button
+                type="button"
+                @click="confirmPendingAction()"
+                :disabled="saving"
+                class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                x-text="saving ? 'Processing...' : (confirmationAction === 'reset-positions' ? 'Reset Map' : 'Remove from Map')"
+            ></button>
+        </div>
+    </div>
+</div>
+
 
 {{-- MAP DISPLAY MODE --}}
 <div class="flex rounded-lg border border-slate-200 bg-slate-50 p-1">
@@ -199,29 +249,59 @@
                 style="height: 620px; touch-action: none; background-color: #EAF0F6; background-image: linear-gradient(rgba(14, 41, 88, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(14, 41, 88, 0.055) 1px, transparent 1px); background-size: 28px 28px;"
             >
 
+
 {{-- FLOATING COLLEGE LEGEND --}}
 <div
     x-show="mapMode === 'college'"
     x-cloak
+    x-data="{ legendMinimized: false }"
     @pointerdown.stop
     @click.stop
-    class="absolute top-4 right-4 z-[100] w-52 max-h-[85%] overflow-y-auto rounded-xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm"
+    class="absolute top-4 right-4 z-[100] w-52 rounded-xl border border-slate-200 bg-white/95 shadow-xl backdrop-blur-sm transition-all duration-200"
+    :class="legendMinimized ? 'p-3' : 'max-h-[85%] overflow-y-auto p-4'"
 >
-    <div class="mb-3 flex items-center justify-between gap-2">
+    <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-bold text-[#0E2958]">
             College Legend
         </h3>
 
-        <button
-            type="button"
-            @click="selectedCollege = null"
-            class="text-xs font-semibold text-[#0E4C6B] hover:underline"
-        >
-            Show All
-        </button>
+        <div class="flex items-center gap-2">
+            <button
+                type="button"
+                @click="selectedCollege = null"
+                x-show="!legendMinimized"
+                class="text-xs font-semibold text-[#0E4C6B] hover:underline"
+            >
+                Show All
+            </button>
+
+            <button
+                type="button"
+                @click="legendMinimized = !legendMinimized"
+                class="flex h-7 w-7 items-center justify-center rounded-lg text-[#0E4C6B] transition hover:bg-slate-100"
+                :title="legendMinimized ? 'Expand legend' : 'Minimize legend'"
+                :aria-label="legendMinimized ? 'Expand legend' : 'Minimize legend'"
+            >
+                <svg
+                    class="h-4 w-4 transition-transform duration-200"
+                    :class="legendMinimized ? 'rotate-180' : ''"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m5 15 7-7 7 7" />
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <div class="space-y-2">
+    <div
+        x-show="!legendMinimized"
+        x-transition
+        class="mt-3 space-y-2"
+    >
         @foreach($colleges as $college)
             <button
                 type="button"
@@ -230,8 +310,8 @@
                     : @js($college->college_code)"
                 class="flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-xs font-semibold transition hover:bg-slate-50"
                 :class="selectedCollege === @js($college->college_code)
-    ? 'ring-2 ring-amber-300 ring-offset-1 bg-amber-50'
-    : 'opacity-80 hover:opacity-100'"
+                    ? 'ring-2 ring-amber-300 ring-offset-1 bg-amber-50'
+                    : 'opacity-80 hover:opacity-100'"
                 :style="`border-color: {{ $college->color }}; color: {{ $college->color }};`"
             >
                 <span
@@ -251,6 +331,7 @@
         @endforeach
     </div>
 </div>
+
 
                 <div
                 
@@ -281,7 +362,8 @@
                                     {{ $location->map_x }},
                                     {{ $location->map_y }},
                                     {{ $location->marker_size ?? 28 }},
-                                    @js($location->name)
+                                    @js($location->name),
+{{ $location->building_id ?? 'null' }}
                                 )"
                                 class="group absolute z-50"
                                 :style="`left:${x}%;top:${y}%;transform:translate(-50%,-50%);`"
@@ -830,6 +912,13 @@ selectedCollege: null,
         panning: false,
         saving: false,
 
+        // Custom confirmation modal state (replaces native browser confirm dialogs).
+        showConfirmationModal: false,
+        confirmationTitle: '',
+        confirmationMessage: '',
+        confirmationDetail: '',
+        confirmationAction: null,
+
         draggingNew: false,
         draggingName: '',
         draggingNewId: null,
@@ -862,9 +951,14 @@ selectedCollege: null,
         },
 
         placedIds: @js($locations
-            ->filter(fn ($location) => $location->map_x !== null && $location->map_y !== null)
-            ->pluck('id')
-            ->values()),
+    ->filter(fn ($location) => $location->map_x !== null && $location->map_y !== null)
+    ->pluck('id')
+    ->values()),
+
+locationBuildingMap: @js($locations->mapWithKeys(fn ($location) => [
+    $location->id => $location->building_id
+])),
+
 buildingForMarker(number) {
     const code = this.buildingMap[Number(number)];
 
@@ -1258,7 +1352,7 @@ this.selectedLocation = {
 
             node.setAttribute(
                 'x-data',
-                `campusMarker(${Number(id)}, ${Number(number)}, ${position.map_x}, ${position.map_y}, 28, ${JSON.stringify(name)})`
+                `campusMarker(${Number(id)}, ${Number(number)}, ${position.map_x}, ${position.map_y}, 28, ${JSON.stringify(name)}, ${this.locationBuildingMap[Number(id)] ?? 'null'})`
             );
 
             node.className = 'group absolute z-50';
@@ -1283,10 +1377,8 @@ this.selectedLocation = {
                 "[editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default', selected ? 'border-amber-300 ring-4 ring-amber-300/60' : 'border-white']"
             );
 
-            markerCircle.setAttribute(
-                ':style',
-                '`width:${size}px;height:${size}px;font-size:${Math.max(3, Math.round(size * 0.36))}px;`'
-            );
+           markerCircle.setAttribute(':style', 'markerStyle()');
+markerCircle.setAttribute(':title', 'label');
 
             const label = document.createElement('div');
 
@@ -1413,17 +1505,23 @@ this.selectedLocation = {
             );
         },
 
-        async removeSelectedMarker() {
+        removeSelectedMarker() {
+            if (!this.editMode || this.saving || this.selectedMarkerId === null) return;
+
+            const markerName = this.selectedMarkerName || 'this location';
+
+            this.confirmationTitle = 'Remove Marker?';
+            this.confirmationMessage = `Are you sure you want to remove ${markerName} from the campus map?`;
+            this.confirmationDetail = 'The campus location record will be kept. You can place this marker again later.';
+            this.confirmationAction = 'remove-marker';
+            this.showConfirmationModal = true;
+        },
+
+        async confirmRemoveSelectedMarker() {
             if (!this.editMode || this.saving || this.selectedMarkerId === null) return;
 
             const markerId = Number(this.selectedMarkerId);
-            const markerName = this.selectedMarkerName || 'this location';
-            const confirmed = confirm(
-                `Remove "${markerName}" from the map? The campus location record will be kept, and you can place it again later.`
-            );
-
-            if (!confirmed) return;
-
+            this.showConfirmationModal = false;
             this.saving = true;
             this.message = '';
 
@@ -1459,15 +1557,20 @@ this.selectedLocation = {
             }
         },
 
-        async resetPositions() {
+        resetPositions() {
             if (!this.editMode || this.saving) return;
 
-            const confirmed = confirm(
-                'This will remove every saved marker position from the database. Continue?'
-            );
+            this.confirmationTitle = 'Reset Campus Map?';
+            this.confirmationMessage = 'This will remove every saved marker position from the database.';
+            this.confirmationDetail = 'All placed markers will be returned to the location list. This action affects every saved marker position.';
+            this.confirmationAction = 'reset-positions';
+            this.showConfirmationModal = true;
+        },
 
-            if (!confirmed) return;
+        async confirmResetPositions() {
+            if (!this.editMode || this.saving) return;
 
+            this.showConfirmationModal = false;
             this.saving = true;
             this.message = '';
 
@@ -1503,15 +1606,33 @@ this.selectedLocation = {
             } finally {
                 this.saving = false;
             }
+        },
+
+        async confirmPendingAction() {
+            if (this.saving) return;
+
+            if (this.confirmationAction === 'remove-marker') {
+                await this.confirmRemoveSelectedMarker();
+            } else if (this.confirmationAction === 'reset-positions') {
+                await this.confirmResetPositions();
+            }
+        },
+
+        cancelConfirmation() {
+            if (this.saving) return;
+
+            this.showConfirmationModal = false;
+            this.confirmationAction = null;
         }
     }));
 
     
 Alpine.data(
     'campusMarker',
-    (id, number, initialX, initialY, initialSize = 28, label = '') => ({
-        id: Number(id),
-        number: Number(number),
+    (id, number, initialX, initialY, initialSize = 28, label = '', buildingId = null) => ({
+    id: Number(id),
+    number: Number(number),
+    buildingId: buildingId ? Number(buildingId) : null,
         x: Number(initialX),
         y: Number(initialY),
         size: Number(initialSize),
@@ -1535,7 +1656,7 @@ Alpine.data(
                 editor &&
                 editor.mapMode === 'college' &&
                 editor.selectedCollege &&
-                editor.markerHasCollege(this.number, editor.selectedCollege)
+                editor.markerHasCollege(this.number, editor.selectedCollege, this.id)
             );
         },
 
@@ -1552,7 +1673,7 @@ Alpine.data(
                 `;
             }
 
-            const colors = editor.markerCollegeColors(this.number);
+            const colors = editor.markerCollegeColors(this.number, this.id);
 
             let background = '#6B7280';
 
