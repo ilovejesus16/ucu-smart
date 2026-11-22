@@ -435,21 +435,17 @@ Route::delete('/admin/rooms/delete-all', [RoomController::class, 'deleteAll'])
         ->middleware('admin.permission:rooms,view')
         ->name('admin.rooms.show');
 
-    Route::get('/admin/rooms/{room}/edit', [RoomController::class, 'edit'])
-        ->middleware('admin.permission:rooms,full')
-        ->name('admin.rooms.edit');
+   Route::get('/admin/rooms/{room}/edit', [RoomController::class, 'edit'])
+    ->middleware('admin.permission:rooms,full')
+    ->name('admin.rooms.edit');
 
-    Route::put('/admin/rooms/{room}', [RoomController::class, 'update'])
-        ->middleware('admin.permission:rooms,full')
-        ->name('admin.rooms.update');
+Route::match(['put', 'patch'], '/admin/rooms/{room}', [RoomController::class, 'update'])
+    ->middleware('admin.permission:rooms,full')
+    ->name('admin.rooms.update');
 
-    Route::patch('/admin/rooms/{room}', [RoomController::class, 'update'])
-        ->middleware('admin.permission:rooms,full')
-        ->name('admin.rooms.update');
-
-    Route::delete('/admin/rooms/{room}', [RoomController::class, 'destroy'])
-        ->middleware('admin.permission:rooms,full')
-        ->name('admin.rooms.destroy');
+Route::delete('/admin/rooms/{room}', [RoomController::class, 'destroy'])
+    ->middleware('admin.permission:rooms,full')
+    ->name('admin.rooms.destroy');
 
 
     /*
