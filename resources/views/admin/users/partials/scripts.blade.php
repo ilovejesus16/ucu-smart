@@ -270,57 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Add User Role Toggle
-    |--------------------------------------------------------------------------
-    */
-
-    const roleSelect = document.getElementById('roleSelect');
-
-    const usernameField = document.getElementById('usernameField');
-    const studentField = document.getElementById('studentField');
-    const employeeField = document.getElementById('employeeField');
-    const courseField = document.getElementById('courseField');
-    const departmentField = document.getElementById('departmentField');
-
-    function toggleRoleFields() {
-
-        if (!roleSelect) return;
-
-        const role = roleSelect.value;
-
-        [
-            usernameField,
-            studentField,
-            employeeField,
-            courseField,
-            departmentField
-        ].forEach(field => {
-            if (field) field.classList.add('hidden');
-        });
-
-        if (role === 'student') {
-
-            studentField?.classList.remove('hidden');
-            courseField?.classList.remove('hidden');
-
-        } else if (role === 'instructor') {
-
-            employeeField?.classList.remove('hidden');
-            departmentField?.classList.remove('hidden');
-
-        } else if (role === 'admin') {
-
-            usernameField?.classList.remove('hidden');
-
-        }
-    }
-
-    if (roleSelect) {
-        toggleRoleFields();
-        roleSelect.addEventListener('change', toggleRoleFields);
-    }
+   
 
     /*
     |--------------------------------------------------------------------------

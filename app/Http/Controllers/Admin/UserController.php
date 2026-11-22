@@ -595,7 +595,7 @@ public function store(Request $request)
 {
     $validated = $request->validate([
         'role' => 'required|in:student,instructor,admin',
-        'status' => 'required|in:active,pending,rejected',
+        
 
         'first_name' => 'required|string|max:255',
         'last_name' => 'required|string|max:255',
@@ -637,7 +637,7 @@ public function store(Request $request)
 
     $user = User::create([
         'role' => $validated['role'],
-        'status' => $validated['status'],
+        'status' => 'active',
 
         'username' => $username,
 

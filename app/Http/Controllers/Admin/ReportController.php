@@ -11,6 +11,8 @@ use App\Models\Schedule;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\ClassOccurrence;
+
 
 class ReportController extends Controller
 {
@@ -22,16 +24,15 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $totalSchedules = Schedule::count();
+       $totalSchedules = ClassOccurrence::count();
 
-        $scheduled = Schedule::where('status', 'scheduled')->count();
+$scheduled = ClassOccurrence::where('status', 'scheduled')->count();
 
-        $inProgress = Schedule::where('status', 'in_progress')->count();
+$inProgress = ClassOccurrence::where('status', 'in_progress')->count();
 
-        $completed = Schedule::where('status', 'completed')->count();
+$completed = ClassOccurrence::where('status', 'completed')->count();
 
-        $cancelled = Schedule::where('status', 'cancelled')->count();
-
+$cancelled = ClassOccurrence::where('status', 'cancelled')->count();
 
         /*
         |--------------------------------------------------------------------------
@@ -142,24 +143,29 @@ class ReportController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $roomSort = $request->get('room_sort', 'most');
+        
+$roomSort = $request->get('room_sort', 'most');
 
-        $roomUsageQuery = RoomUsage::selectRaw(
-            'room_id, COUNT(*) as total_usage, SUM(duration_minutes) as total_minutes'
-        )
-            ->with('room.building')
-            ->groupBy('room_id');
+$roomUsageQuery = Room::query()
+    ->with('building')
+    ->withCount([
+        'usages as total_usage'
+    ])
+    ->withSum(
+        'usages as total_minutes',
+        'duration_minutes'
+    );
 
-        if ($roomSort === 'least') {
-            $roomUsageQuery->orderBy('total_usage', 'asc');
-        } else {
-            $roomUsageQuery->orderBy('total_usage', 'desc');
-        }
+if ($roomSort === 'least') {
+    $roomUsageQuery->orderBy('total_usage', 'asc');
+} else {
+    $roomUsageQuery->orderBy('total_usage', 'desc');
+}
 
-        $roomUsage = $roomUsageQuery
-            ->limit(10)
-            ->get();
-
+$roomUsage = $roomUsageQuery
+    ->orderBy('room_number')
+    ->limit(10)
+    ->get();
 
         /*
         |--------------------------------------------------------------------------

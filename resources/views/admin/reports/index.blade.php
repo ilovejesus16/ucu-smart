@@ -307,60 +307,48 @@
 
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($roomUsage as $index => $usage)
-                            <tr class="transition hover:bg-slate-50">
+    <tr class="transition hover:bg-slate-50">
+        <td class="whitespace-nowrap px-6 py-4">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
+                {{ $index + 1 }}
+            </span>
+        </td>
 
-                                <td class="whitespace-nowrap px-6 py-4">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
-                                        {{ $index + 1 }}
-                                    </span>
-                                </td>
+        <td class="px-6 py-4">
+            <p class="font-semibold text-slate-800">
+                {{ $usage->room_name ?: 'Unnamed Room' }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+                Room {{ $usage->room_number }}
+            </p>
+        </td>
 
-                                <td class="px-6 py-4">
-                                    @if ($usage->room)
-                                        <p class="font-semibold text-slate-800">
-                                            {{ $usage->room->room_name ?: 'Unnamed Room' }}
-                                        </p>
+        <td class="px-6 py-4 text-sm text-slate-600">
+            {{ $usage->building?->building_name ?? '—' }}
+        </td>
 
-                                        <p class="mt-1 text-xs text-slate-500">
-                                            Room {{ $usage->room->room_number }}
-                                        </p>
-                                    @else
-                                        <span class="text-sm text-red-500">
-                                            Room unavailable
-                                        </span>
-                                    @endif
-                                </td>
+        <td class="whitespace-nowrap px-6 py-4 text-right">
+            <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700">
+                {{ number_format($usage->total_usage) }}
+            </span>
+        </td>
 
-                                <td class="px-6 py-4 text-sm text-slate-600">
-                                    @if ($usage->room && $usage->room->building)
-                                        {{ $usage->room->building->building_name }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-
-                                <td class="whitespace-nowrap px-6 py-4 text-right">
-                                    <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700">
-                                        {{ number_format($usage->total_usage) }}
-                                    </span>
-                                </td>
-
-                                <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-semibold text-slate-700">
-                                    {{ number_format(($usage->total_minutes ?? 0) / 60, 1) }} hrs
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-12 text-center">
-                                    <p class="font-medium text-slate-700">
-                                        No room usage data available yet.
-                                    </p>
-                                    <p class="mt-1 text-sm text-slate-500">
-                                        Rooms will appear here once usage records exist.
-                                    </p>
-                                </td>
-                            </tr>
-                        @endforelse
+        <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-semibold text-slate-700">
+            {{ number_format(($usage->total_minutes ?? 0) / 60, 1) }} hrs
+        </td>
+    </tr>
+@empty
+    <tr>
+        <td colspan="5" class="px-6 py-12 text-center">
+            <p class="font-medium text-slate-700">
+                No room usage data available yet.
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+                Rooms will appear here once usage records exist.
+            </p>
+        </td>
+    </tr>
+@endforelse
                     </tbody>
                 </table>
             </div>

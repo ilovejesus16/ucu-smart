@@ -14,9 +14,8 @@
         </h1>
 
         <p class="text-gray-500 mt-2">
-            Select a building to view its classrooms and availability.
-        </p>
-
+    The buildings displayed on this page are those where you have scheduled classes. Select a building to view its assigned classrooms, check room availability, and see your class schedules.
+</p>
     </div>
 
 

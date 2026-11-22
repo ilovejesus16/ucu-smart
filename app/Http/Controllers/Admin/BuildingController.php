@@ -117,31 +117,40 @@ public function store(StoreBuildingRequest $request)
      * Update Building
      */
     public function update(
-        UpdateBuildingRequest $request,
-        Building $building
-    ) {
-        $data = $request->validated();
+    UpdateBuildingRequest $request,
+    Building $building
+) {
+    $data = $request->validated();
 
-        // Keep existing building code.
-        $data['building_code'] = $building->building_code;
+    $data['building_code'] = $building->building_code;
 
-        if ($request->hasFile('image')) {
-            if ($building->image) {
-                Storage::disk('public')->delete($building->image);
-            }
-
-            $data['image'] = $request->file('image')
-                ->store('buildings', 'public');
+    if ($request->hasFile('image')) {
+        if ($building->image) {
+            Storage::disk('public')->delete($building->image);
         }
 
-        $building->update($data);
-
-        return back()->with(
-            'success',
-            'Building updated successfully.'
-        );
+        $data['image'] = $request->file('image')
+            ->store('buildings', 'public');
     }
 
+    $building->update($data);
+    $this->logActivity(
+    'Updated',
+    'Buildings',
+    "Updated building: {$building->building_name} ({$building->building_code})"
+);
+
+    $this->logActivity(
+        'Updated',
+        'Buildings',
+        "Updated building: {$building->building_name} ({$building->building_code})"
+    );
+
+    return back()->with(
+        'success',
+        'Building updated successfully.'
+    );
+}
     
 /**
  * Delete Building
@@ -269,30 +278,30 @@ public function storeImportedBuildings()
 {
     $buildings = session('building_import_preview', []);
 
-    foreach ($buildings as $building) {
-        if (($building['status'] ?? null) !== 'new') {
-            continue;
+    \Illuminate\Support\Facades\DB::transaction(function () use ($buildings) {
+        foreach ($buildings as $building) {
+            if (($building['status'] ?? null) !== 'new') {
+                continue;
+            }
+
+            $buildingCode = $building['building_code']
+                ?? $this->generateBuildingCode();
+
+            $createdBuilding = Building::create([
+                'building_code' => $buildingCode,
+                'building_name' => $building['building_name'],
+                'description' => $building['description'] ?? null,
+            ]);
+
+            $this->createCampusLocationForBuilding($createdBuilding);
+
+            $this->logActivity(
+                'Created',
+                'Buildings',
+                "Imported building: {$createdBuilding->building_name} ({$createdBuilding->building_code})"
+            );
         }
-
-        $buildingCode = $building['building_code']
-            ?? $this->generateBuildingCode();
-
-        $createdBuilding = Building::create([
-            'building_code' => $buildingCode,
-            'building_name' => $building['building_name'],
-            'description' => $building['description'] ?? null,
-        ]);
-        $this->createCampusLocationForBuilding($createdBuilding);
-
-        // Automatically add the building to the campus map.
-        $this->createCampusLocationForBuilding($createdBuilding);
-
-        $this->logActivity(
-            'Created',
-            'Buildings',
-            "Imported building: {$createdBuilding->building_name} ({$createdBuilding->building_code})"
-        );
-    }
+    });
 
     session()->forget('building_import_preview');
 

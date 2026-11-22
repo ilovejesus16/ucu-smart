@@ -60,52 +60,51 @@
     </div>
 
 
-    <!-- ===================================================== -->
-    <!-- SUCCESS MESSAGE -->
-    <!-- ===================================================== -->
+    
+@if(session('success') || session('error') || $errors->any())
 
-    @if(session('success'))
+    <div id="scheduleToast"
+         class="fixed top-6 right-6 z-[110] w-full max-w-sm rounded-xl border bg-white p-4 shadow-xl
+         {{ session('error') || $errors->any() ? 'border-red-200' : 'border-green-200' }}">
 
-        <div
-            class="mb-6 rounded-xl border border-green-200
-                   bg-green-50 p-4 text-green-700">
+        <div class="flex items-start gap-3">
 
-            {{ session('success') }}
+            @if(session('error') || $errors->any())
+                <x-heroicon-o-exclamation-circle class="h-6 w-6 shrink-0 text-red-600"/>
+            @else
+                <x-heroicon-o-check-circle class="h-6 w-6 shrink-0 text-green-600"/>
+            @endif
 
-        </div>
+            <div class="min-w-0 flex-1">
+                <p class="font-semibold text-slate-800">
+                    {{ session('error') || $errors->any() ? 'Action Failed' : 'Success' }}
+                </p>
 
-    @endif
+                <p class="mt-1 text-sm text-slate-600">
+                    @if($errors->any())
+                        {{ $errors->first() }}
+                    @else
+                        {{ session('error') ?? session('success') }}
+                    @endif
+                </p>
+            </div>
 
-
-    <!-- ===================================================== -->
-    <!-- ERROR MESSAGE -->
-    <!-- ===================================================== -->
-
-    @if($errors->any())
-
-        <div
-            class="mb-6 rounded-xl border border-red-200
-                   bg-red-50 p-4 text-red-700">
-
-            <p class="font-semibold mb-2">
-                Import failed.
-            </p>
-
-            <ul class="list-disc ml-5 space-y-1">
-
-                @foreach($errors->all() as $error)
-
-                    <li>
-                        {{ $error }}
-                    </li>
-
-                @endforeach
-
-            </ul>
+            <button type="button"
+                    onclick="document.getElementById('scheduleToast').remove()"
+                    class="text-slate-400 hover:text-slate-700">
+                &times;
+            </button>
 
         </div>
+    </div>
 
-    @endif
+    <script>
+        setTimeout(() => {
+            document.getElementById('scheduleToast')?.remove();
+        }, 5000);
+    </script>
+
+@endif
 
 
     <!-- ===================================================== -->

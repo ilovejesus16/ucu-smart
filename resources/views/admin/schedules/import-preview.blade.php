@@ -817,7 +817,7 @@
 
                             @disabled($ready === 0 || $missingRooms > 0)
 
-                            onclick="return confirm('Are you sure you want to import the eligible schedules?')"
+                            
 
                             id="confirm-import-button" class="rounded-xl bg-[#0E4C6B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#0B3D56] transition disabled:cursor-not-allowed disabled:opacity-50">
 
@@ -877,11 +877,112 @@
 
 
 
+<!-- CUSTOM IMPORT CONFIRMATION -->
+<div id="importConfirmModal"
+     class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/50 backdrop-blur-sm p-4">
+
+    <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+
+        <div class="p-6 text-center">
+
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#0E4C6B]">
+                <x-heroicon-o-cloud-arrow-up class="h-8 w-8"/>
+            </div>
+
+            <h2 class="text-xl font-bold text-slate-800">
+                Confirm Schedule Import
+            </h2>
+
+            <p class="mt-2 text-sm text-slate-500">
+                Are you sure you want to import the eligible schedules?
+            </p>
+
+            <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Eligible Schedules
+                </p>
+                <p id="confirmImportCount" class="mt-1 text-3xl font-bold text-[#0E4C6B]">
+                    0
+                </p>
+                <p class="text-xs text-slate-500">Ready to be imported</p>
+            </div>
+
+        </div>
+
+        <div class="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+
+            <button type="button"
+                    id="cancelImportConfirm"
+                    class="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                Cancel
+            </button>
+
+            <button type="button"
+                    id="proceedImportConfirm"
+                    class="rounded-xl bg-[#0E4C6B] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0B3D56]">
+                Confirm Import
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.querySelector('form[action="{{ route('admin.schedules.store') }}"]');
     if (!form) return;
+
+// Custom import confirmation
+const importModal = document.getElementById('importConfirmModal');
+const cancelImportConfirm = document.getElementById('cancelImportConfirm');
+const proceedImportConfirm = document.getElementById('proceedImportConfirm');
+const confirmImportCount = document.getElementById('confirmImportCount');
+
+let importConfirmed = false;
+
+form.addEventListener('submit', function (event) {
+
+    if (importConfirmed) return;
+
+    event.preventDefault();
+
+    if (confirmButton.disabled) return;
+
+    confirmImportCount.textContent = eligibleCount.textContent.trim();
+
+    importModal.classList.remove('hidden');
+    importModal.classList.add('flex');
+
+});
+
+cancelImportConfirm.addEventListener('click', function () {
+    importModal.classList.add('hidden');
+    importModal.classList.remove('flex');
+});
+
+importModal.addEventListener('click', function (event) {
+    if (event.target === importModal) {
+        importModal.classList.add('hidden');
+        importModal.classList.remove('flex');
+    }
+});
+
+proceedImportConfirm.addEventListener('click', function () {
+
+    if (confirmButton.disabled) return;
+
+    importConfirmed = true;
+
+    proceedImportConfirm.disabled = true;
+    proceedImportConfirm.textContent = 'Importing...';
+
+    confirmButton.disabled = true;
+
+    form.requestSubmit();
+
+});
 
     const eligibleCount = document.getElementById('eligible-count');
     const missingCount = document.getElementById('missing-room-count');

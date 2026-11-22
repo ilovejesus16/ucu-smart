@@ -37,10 +37,10 @@ class Schedule extends Model
         return $this->belongsTo(User::class, 'instructor_id');
     }
 
-    public function usage()
-    {
-        return $this->hasOne(RoomUsage::class);
-    }
+   public function usages()
+{
+    return $this->hasMany(RoomUsage::class);
+}
 
     public function occurrences()
 {

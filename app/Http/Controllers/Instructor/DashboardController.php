@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Room;
 use Carbon\Carbon;
 use App\Models\Building;
+use App\Models\RoomUsage;
+use Illuminate\Support\Facades\DB;
+use App\Models\College;
+use App\Models\AcademicYear;
 
 class DashboardController extends Controller
 {
@@ -156,89 +160,102 @@ public function schedule()
     }
 
     public function startClass(Schedule $schedule)
-    {
-        abort_if(
-            $schedule->instructor_id != auth()->id(),
-            403
+{
+    abort_if($schedule->instructor_id != auth()->id(), 403);
+
+    $now = Carbon::now();
+
+    if (!$this->scheduleMatchesDate($schedule->day, $now)) {
+        return back()->with('error', 'This class is not scheduled for today.');
+    }
+
+    $startTime = Carbon::parse(
+        $now->toDateString() . ' ' . $schedule->start_time
+    );
+
+    $endTime = Carbon::parse(
+        $now->toDateString() . ' ' . $schedule->end_time
+    );
+
+    if ($now->lt($startTime->copy()->subMinutes(10))) {
+        return back()->with(
+            'error',
+            'You can only start your class 10 minutes before its scheduled start time.'
         );
+    }
 
-        $now = Carbon::now();
-
-        if (!$this->scheduleMatchesDate($schedule->day, $now)) {
-            return back()->with(
-                'error',
-                'This class is not scheduled for today.'
-            );
-        }
-
-        $startTime = Carbon::parse(
-            $now->toDateString() . ' ' . $schedule->start_time
+    if ($now->gt($endTime->copy()->addMinutes(5))) {
+        return back()->with(
+            'error',
+            'The scheduled class start window has already expired.'
         );
+    }
 
-        $endTime = Carbon::parse(
-            $now->toDateString() . ' ' . $schedule->end_time
-        );
+    $occurrence = $this->getTodayOccurrence($schedule, $now);
 
-        $startAllowedAt = $startTime->copy()->subMinutes(10);
-        $lastStartTime = $endTime->copy()->addMinutes(5);
+    if ($occurrence->status === 'completed') {
+        return back()->with('error', 'This class has already been completed.');
+    }
 
-        if ($now->lt($startAllowedAt)) {
-            return back()->with(
-                'error',
-                'You can only start your class 10 minutes before its scheduled start time.'
-            );
+    if ($occurrence->status === 'cancelled') {
+        return back()->with('error', 'This class has been cancelled.');
+    }
+
+    if ($occurrence->status === 'in_progress') {
+        return back()->with('error', 'This class is already in progress.');
+    }
+
+    $started = DB::transaction(function () use ($occurrence, $schedule, $now) {
+        $lockedOccurrence = ClassOccurrence::whereKey($occurrence->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($lockedOccurrence->status !== 'scheduled') {
+            return false;
         }
 
-        if ($now->gt($lastStartTime)) {
-            return back()->with(
-                'error',
-                'The scheduled class start window has already expired.'
-            );
+        $activeUsage = RoomUsage::where('schedule_id', $schedule->id)
+            ->whereNull('ended_at')
+            ->exists();
+
+        if ($activeUsage) {
+            return false;
         }
 
-        $occurrence = $this->getTodayOccurrence($schedule, $now);
-
-        if ($occurrence->status === 'completed') {
-            return back()->with(
-                'error',
-                'This class has already been completed.'
-            );
-        }
-
-        if ($occurrence->status === 'cancelled') {
-            return back()->with(
-                'error',
-                'This class has been cancelled.'
-            );
-        }
-
-        if ($occurrence->status === 'in_progress') {
-            return back()->with(
-                'error',
-                'This class is already in progress.'
-            );
-        }
-
-        $occurrence->update([
+        $lockedOccurrence->update([
             'status' => 'in_progress',
             'started_at' => $now,
             'ended_at' => null,
         ]);
 
+        RoomUsage::create([
+            'room_id' => $schedule->room_id,
+            'schedule_id' => $schedule->id,
+            'instructor_id' => auth()->id(),
+            'started_at' => $now,
+            'ended_at' => null,
+            'duration_minutes' => null,
+        ]);
+
+        return true;
+    });
+
+    if (!$started) {
         return back()->with(
-            'success',
-            'Class started successfully. The room is now marked as occupied.'
+            'error',
+            'This class already has an active usage record or has changed status. Please refresh.'
         );
     }
 
-    
+    return back()->with(
+        'success',
+        'Class started successfully. The room is now marked as occupied.'
+    );
+}
 
 public function endClass(Schedule $schedule)
 {
-    abort_if(
-        $schedule->instructor_id != auth()->id(),
-        403
-    );
+    abort_if($schedule->instructor_id != auth()->id(), 403);
 
     $now = Carbon::now();
 
@@ -246,35 +263,16 @@ public function endClass(Schedule $schedule)
         ->whereDate('class_date', $now->toDateString())
         ->first();
 
-    // Handle an old class that was started before occurrences existed.
-    if ($schedule->status === 'in_progress') {
-
-        if (!$occurrence) {
-            $occurrence = $schedule->occurrences()->create([
-                'class_date' => $now->toDateString(),
-                'status' => 'completed',
-                'started_at' => $now,
-                'ended_at' => $now,
-            ]);
-        } else {
-            $occurrence->update([
-                'status' => 'completed',
-                'ended_at' => $now,
-            ]);
-        }
-
-        // Update the legacy status so the old UI no longer shows In Progress.
-        $schedule->update([
-            'status' => 'completed',
-        ]);
+    // Legacy fallback: do not invent a historical start time.
+    if (!$occurrence && $schedule->status === 'in_progress') {
+        $schedule->update(['status' => 'completed']);
 
         return back()->with(
             'success',
-            'Previous class successfully ended. The room is now available.'
+            'Previous class status updated. No usage duration was recorded because its actual start time was unavailable.'
         );
     }
 
-    // Normal occurrence-based class ending.
     if (!$occurrence || $occurrence->status !== 'in_progress') {
         return back()->with(
             'error',
@@ -282,10 +280,48 @@ public function endClass(Schedule $schedule)
         );
     }
 
-    $occurrence->update([
-        'status' => 'completed',
-        'ended_at' => $now,
-    ]);
+    $ended = DB::transaction(function () use ($occurrence, $schedule, $now) {
+        $lockedOccurrence = ClassOccurrence::whereKey($occurrence->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($lockedOccurrence->status !== 'in_progress') {
+            return false;
+        }
+
+        $usage = RoomUsage::where('schedule_id', $schedule->id)
+            ->where('instructor_id', auth()->id())
+            ->whereNull('ended_at')
+            ->orderByDesc('started_at')
+            ->lockForUpdate()
+            ->first();
+
+        if ($usage) {
+            $startedAt = $usage->started_at;
+
+            $usage->update([
+                'ended_at' => $now,
+                'duration_minutes' => max(
+                    0,
+                    (int) $startedAt->diffInMinutes($now)
+                ),
+            ]);
+        }
+
+        $lockedOccurrence->update([
+            'status' => 'completed',
+            'ended_at' => $now,
+        ]);
+
+        return true;
+    });
+
+    if (!$ended) {
+        return back()->with(
+            'error',
+            'This class has already ended. Please refresh the page.'
+        );
+    }
 
     return back()->with(
         'success',
@@ -295,54 +331,63 @@ public function endClass(Schedule $schedule)
 
 
 
-    public function buildings()
-    {
-        $buildings = Building::withCount('rooms')
-            ->orderBy('building_name')
-            ->get();
+    
 
-        return view('instructor.rooms.index', compact('buildings'));
-    }
+public function buildings()
+{
+    $instructorId = Auth::id();
 
-    public function buildingRooms(Building $building)
-    {
-        $today = Carbon::today();
-
-        $rooms = $building->rooms()
-            ->with('schedules.instructor')
-            ->orderBy('floor')
-            ->orderBy('room_number')
-            ->get();
-
-        foreach ($rooms as $room) {
-            $room->occupiedSchedule = $room->schedules
-                ->first(function ($schedule) use ($today) {
-                    if (!$this->scheduleMatchesDate($schedule->day, $today)) {
-                        return false;
-                    }
-
-                    $occurrence = $this->getTodayOccurrence(
-                        $schedule,
-                        $today
-                    );
-
-                    return $occurrence
-                        && $occurrence->status === 'in_progress';
+    $buildings = Building::whereHas('rooms', function ($query) use ($instructorId) {
+            $query->whereHas('schedules', function ($scheduleQuery) use ($instructorId) {
+                $scheduleQuery->where('instructor_id', $instructorId);
+            });
+        })
+        ->withCount([
+            'rooms' => function ($query) use ($instructorId) {
+                $query->whereHas('schedules', function ($scheduleQuery) use ($instructorId) {
+                    $scheduleQuery->where('instructor_id', $instructorId);
                 });
-        }
+            }
+        ])
+        ->orderBy('building_name')
+        ->get();
 
-        return view('instructor.rooms.building', compact('building', 'rooms'));
-    }
+    return view('instructor.rooms.index', compact('buildings'));
+}
 
-    public function roomDetails(Room $room)
-    {
-        $room->load('building');
 
-        $today = Carbon::today();
+public function buildingRooms(Building $building)
+{
+    $instructorId = Auth::id();
 
-        $schedule = Schedule::where('room_id', $room->id)
-            ->with('instructor')
-            ->get()
+    // Only allow buildings containing rooms assigned to this instructor.
+    abort_unless(
+        $building->rooms()
+            ->whereHas('schedules', function ($query) use ($instructorId) {
+                $query->where('instructor_id', $instructorId);
+            })
+            ->exists(),
+        404
+    );
+
+    $today = Carbon::today();
+
+    $rooms = $building->rooms()
+        ->whereHas('schedules', function ($query) use ($instructorId) {
+            $query->where('instructor_id', $instructorId);
+        })
+        ->with([
+            'schedules' => function ($query) use ($instructorId) {
+                $query->where('instructor_id', $instructorId)
+                    ->with('instructor');
+            }
+        ])
+        ->orderBy('floor')
+        ->orderBy('room_number')
+        ->get();
+
+    foreach ($rooms as $room) {
+        $room->occupiedSchedule = $room->schedules
             ->first(function ($schedule) use ($today) {
                 if (!$this->scheduleMatchesDate($schedule->day, $today)) {
                     return false;
@@ -356,9 +401,49 @@ public function endClass(Schedule $schedule)
                 return $occurrence
                     && $occurrence->status === 'in_progress';
             });
-
-        return view('instructor.rooms.show', compact('room', 'schedule'));
     }
+
+    return view('instructor.rooms.building', compact('building', 'rooms'));
+}
+
+
+public function roomDetails(Room $room)
+{
+    $instructorId = Auth::id();
+
+    // Only allow rooms assigned to this instructor through a schedule.
+    abort_unless(
+        $room->schedules()
+            ->where('instructor_id', $instructorId)
+            ->exists(),
+        404
+    );
+
+    $room->load('building');
+
+    $today = Carbon::today();
+
+    $schedule = Schedule::where('room_id', $room->id)
+        ->where('instructor_id', $instructorId)
+        ->with('instructor')
+        ->get()
+        ->first(function ($schedule) use ($today) {
+            if (!$this->scheduleMatchesDate($schedule->day, $today)) {
+                return false;
+            }
+
+            $occurrence = $this->getTodayOccurrence(
+                $schedule,
+                $today
+            );
+
+            return $occurrence
+                && $occurrence->status === 'in_progress';
+        });
+
+    return view('instructor.rooms.show', compact('room', 'schedule'));
+}
+
 
     /**
      * Retrieve or create today's occurrence for a schedule.
