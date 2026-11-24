@@ -297,9 +297,19 @@
 
             <!-- Logout -->
 
-            <form
-                method="POST"
-                action="{{ route('logout') }}">
+          <form
+    method="POST"
+    action="{{ route('logout') }}"
+    onsubmit="
+        const button = this.querySelector('button[type=submit]');
+        if (this.dataset.submitting === 'true') {
+            return false;
+        }
+        this.dataset.submitting = 'true';
+        button.disabled = true;
+        button.classList.add('opacity-60', 'cursor-not-allowed');
+        button.innerHTML = 'Logging out...';
+    ">
 
                 @csrf
 

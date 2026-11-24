@@ -1,10 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link
@@ -15,30 +14,27 @@
     <title>@yield('title') | UCU Smart+</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
 </head>
-
 
 <body class="bg-gray-100">
 
-<div class="flex min-h-screen">
+    <div class="flex min-h-screen">
 
-    <x-student-sidebar />
+        <x-student-sidebar />
 
-    <main
-        class="flex-1 min-h-screen
-               p-4 sm:p-6 lg:p-8
-               lg:ml-72">
+        <main
+            class="flex-1 min-h-screen
+                   pt-20 px-4 pb-6
+                   sm:px-6 sm:pt-20
+                   lg:ml-72 lg:pt-8 lg:px-8">
 
-        @yield('content')
+            @yield('content')
 
-    </main>
+        </main>
 
-</div>
+    </div>
 
-
-@stack('scripts')
+    @stack('scripts')
 
 </body>
-
 </html>

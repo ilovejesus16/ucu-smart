@@ -98,7 +98,7 @@
                 <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 
                     {{-- Username --}}
-                    <div id="usernameField" class="hidden">
+                    <div id="usernameField" class="md:col-span-2">
                         <label for="usernameInput" class="mb-2 block text-sm font-semibold text-slate-700">
                             Username
                         </label>
@@ -147,22 +147,7 @@
                         >
                     </div>
 
-                    {{-- Administrator Full Name --}}
-                    <div id="adminNameField" class="hidden md:col-span-2">
-                        <label for="adminNameInput" class="mb-2 block text-sm font-semibold text-slate-700">
-                            Full Name
-                        </label>
-                        <input
-                            type="text"
-                            id="adminNameInput"
-                            value="{{ trim(old('first_name', '') . ' ' . old('last_name', '')) }}"
-                            placeholder="Enter administrator's full name"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#0E4C6B] focus:ring-2 focus:ring-[#0E4C6B]/20"
-                        >
-                        <p class="mt-1.5 text-xs text-slate-500">
-                            First and last names will be saved automatically.
-                        </p>
-                    </div>
+                 
 
                     {{-- First Name --}}
                     <div id="firstNameField">
@@ -489,22 +474,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const isInstructor = role === 'instructor';
         const isAdmin = role === 'admin';
 
-        setField(usernameField, isAdmin, usernameInput, true);
-        setField(studentField, isStudent, studentIdInput, true);
-        setField(employeeField, isInstructor, employeeIdInput, true);
+      setField(usernameField, isAdmin, usernameInput, true);
+setField(studentField, isStudent, studentIdInput, true);
+setField(employeeField, isInstructor, employeeIdInput, true);
 
-        setField(adminNameField, isAdmin, adminNameInput, true);
+// Student-only field
+setField(courseField, isStudent, courseInput, true);
 
-        if (firstNameField) firstNameField.classList.toggle('hidden', isAdmin);
-        if (lastNameField) lastNameField.classList.toggle('hidden', isAdmin);
+// Instructor-only field
+setField(departmentField, isInstructor, departmentInput, true);
 
-        // First and last name remain enabled because the administrator's
-        // full name is split into these fields before form submission.
-        firstNameInput.required = !isAdmin;
-        lastNameInput.required = !isAdmin;
+        if (firstNameField) firstNameField.classList.remove('hidden');
+if (lastNameField) lastNameField.classList.remove('hidden');
 
-        setField(courseField, isStudent, courseInput, true);
-        setField(departmentField, isInstructor, departmentInput, true);
+firstNameInput.disabled = false;
+lastNameInput.disabled = false;
+
+firstNameInput.required = true;
+lastNameInput.required = true;
 
         if (permissionsSection) {
             permissionsSection.classList.toggle('hidden', !isAdmin);
@@ -518,15 +505,7 @@ document.addEventListener('DOMContentLoaded', function () {
     roleSelect.addEventListener('change', updateRoleFields);
     updateRoleFields();
 
-    // Split administrator full name into first and last name.
-    form.addEventListener('submit', function () {
-        if (roleSelect.value !== 'admin') return;
-
-        const parts = adminNameInput.value.trim().split(/\s+/).filter(Boolean);
-
-        firstNameInput.value = parts.shift() || '';
-        lastNameInput.value = parts.join(' ');
-    });
+   
 
     // Remove validation message when the modal is closed.
     function clearAddUserErrors() {

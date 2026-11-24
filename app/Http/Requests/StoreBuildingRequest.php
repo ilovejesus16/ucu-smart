@@ -23,7 +23,7 @@ class StoreBuildingRequest extends FormRequest
 
             'building_name' => 'required|string|max:255|unique:buildings,building_name',
 
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
 
             'description' => 'nullable|string|max:2000',
 

@@ -33,7 +33,7 @@ class UpdateBuildingRequest extends FormRequest
 
             ],
 
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
             'description' => 'nullable|string|max:2000',
 
         ];

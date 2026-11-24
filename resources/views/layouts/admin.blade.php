@@ -37,7 +37,10 @@
         {{-- Main Content --}}
         <div class="flex-1 min-w-0">
 
-            <main class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 lg:ml-72">
+            <main class="min-h-screen bg-gray-100
+             pt-20 px-4 pb-6
+             sm:px-6 sm:pt-20
+             lg:ml-72 lg:pt-8 lg:px-8">
 
                 @yield('content')
 

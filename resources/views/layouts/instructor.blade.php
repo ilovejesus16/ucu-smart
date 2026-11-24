@@ -20,7 +20,10 @@
 
     <x-instructor-sidebar />
 
-    <main class="flex-1 min-h-screen p-4 sm:p-6 lg:p-8 lg:ml-72">
+    <main class="flex-1 min-h-screen
+             pt-20 px-4 pb-6
+             sm:px-6 sm:pt-20
+             lg:ml-72 lg:pt-8 lg:px-8">
         @yield('content')
     </main>
 

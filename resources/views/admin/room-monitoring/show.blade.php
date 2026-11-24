@@ -402,194 +402,199 @@
         </div>
 
 
-        @forelse($schedules as $schedule)
+        
+@forelse($schedules as $schedule)
 
-            @php
-                $monitoring = $monitorings->get($schedule->id);
-            @endphp
+    @php
+        $monitoring = $monitorings->get($schedule->id);
 
-            <div class="bg-white rounded-2xl border border-gray-200
-                        shadow-sm p-5 sm:p-6 mb-5">
+        $classStatusStyles = [
+            'upcoming' => 'bg-blue-50 text-blue-700 border-blue-200',
+            'scheduled' => 'bg-amber-50 text-amber-700 border-amber-200',
+            'in_progress' => 'bg-red-50 text-red-700 border-red-200',
+            'completed' => 'bg-green-50 text-green-700 border-green-200',
+            'missed' => 'bg-gray-100 text-gray-600 border-gray-200',
+            'cancelled' => 'bg-gray-100 text-gray-600 border-gray-200',
+            'no_record' => 'bg-gray-100 text-gray-500 border-gray-200',
+        ];
 
-                <!-- Schedule Header -->
+        $classStatusLabels = [
+            'upcoming' => 'Upcoming',
+            'scheduled' => 'Scheduled',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'missed' => 'Missed',
+            'cancelled' => 'Cancelled',
+            'no_record' => 'No Record',
+        ];
 
-                <div class="flex flex-col sm:flex-row
-                            sm:items-start sm:justify-between gap-4">
+        $classStatus = $schedule->classDisplayStatus;
+    @endphp
 
-                    <div class="flex items-start gap-3 min-w-0">
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm
+                overflow-hidden mb-5">
 
-                        <div class="w-11 h-11 rounded-xl
-                                    bg-[#0E4C6B]/10
-                                    flex items-center justify-center
-                                    flex-shrink-0">
+        {{-- SUBJECT HEADER --}}
+        <div class="p-5 sm:p-6">
 
-                            <x-heroicon-o-academic-cap
-                                class="w-6 h-6 text-[#0E4C6B]"/>
+            <div class="flex flex-col sm:flex-row sm:items-start
+                        sm:justify-between gap-5">
 
-                        </div>
+                <div class="flex items-start gap-3 min-w-0">
 
-                        <div class="min-w-0">
+                    <div class="w-12 h-12 rounded-xl bg-[#0E4C6B]/10
+                                flex items-center justify-center flex-shrink-0">
 
-                            <h3 class="text-lg font-bold text-[#0E2958]">
-                                {{ $schedule->subject_name }}
-                            </h3>
-
-                            <p class="text-sm text-gray-500 mt-0.5">
-                                {{ $schedule->subject_code }}
-                            </p>
-
-                            <p class="text-sm text-gray-600 mt-2">
-
-                                Instructor:
-
-                                <span class="font-semibold text-gray-800">
-
-                                    {{ $schedule->instructor->first_name ?? 'Unknown' }}
-                                    {{ $schedule->instructor->last_name ?? '' }}
-
-                                </span>
-
-                            </p>
-
-                        </div>
+                        <x-heroicon-o-academic-cap
+                            class="w-6 h-6 text-[#0E4C6B]"/>
 
                     </div>
 
+                    <div class="min-w-0">
 
-                    <!-- Attendance Status -->
+                        <h3 class="text-lg font-bold text-[#0E2958] break-words">
+                            {{ $schedule->subject_name }}
+                        </h3>
 
-                    
-<!-- Class Status and Attendance Status -->
+                        <p class="text-sm text-gray-500 mt-1">
+                            {{ $schedule->subject_code }}
+                        </p>
 
-<div class="flex flex-col items-start gap-3">
+                        <p class="text-sm text-gray-600 mt-2">
+                            Instructor:
+                            <span class="font-semibold text-gray-800">
+                                {{ $schedule->instructor->first_name ?? 'Unknown' }}
+                                {{ $schedule->instructor->last_name ?? '' }}
+                            </span>
+                        </p>
 
-    <!-- CLASS ACTIVITY STATUS -->
-    <div>
-        <p class="text-xs font-semibold text-gray-500 mb-1">
-            Class Status
-        </p>
+                    </div>
 
-        @if($schedule->classDisplayStatus == 'upcoming')
+                </div>
 
-            <span class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                Upcoming
-            </span>
+                {{-- STATUS BADGES --}}
+                <div class="flex flex-wrap gap-3 sm:justify-end">
 
-        @elseif($schedule->classDisplayStatus == 'scheduled')
+                    <div class="min-w-[130px]">
 
-            <span class="inline-flex items-center gap-2 bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                Scheduled
-            </span>
+                        <p class="text-xs font-semibold text-gray-500 mb-2">
+                            Class Status
+                        </p>
 
-        @elseif($schedule->classDisplayStatus == 'in_progress')
+                        <span class="inline-flex items-center gap-2
+                                     px-3 py-2 rounded-xl border
+                                     text-sm font-semibold
+                                     {{ $classStatusStyles[$classStatus] ?? 'bg-gray-100 text-gray-500 border-gray-200' }}">
 
-            <span class="inline-flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                In Progress
-            </span>
+                            <span class="w-2 h-2 rounded-full bg-current"></span>
 
-        @elseif($schedule->classDisplayStatus == 'completed')
+                            {{ $classStatusLabels[$classStatus] ?? 'No Record' }}
 
-            <span class="inline-flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                Completed
-            </span>
+                        </span>
 
-        @elseif($schedule->classDisplayStatus == 'missed')
+                    </div>
 
-            <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-                Missed
-            </span>
+                    <div class="min-w-[130px]">
 
-        @elseif($schedule->classDisplayStatus == 'cancelled')
+                        <p class="text-xs font-semibold text-gray-500 mb-2">
+                            HR Attendance
+                        </p>
 
-            <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-                Cancelled
-            </span>
+                        @if($monitoring)
 
-        @else
+                            @if($monitoring->attendance_status === 'present')
 
-            <span class="inline-flex items-center gap-2 bg-gray-100 text-gray-500 border border-gray-200 px-3 py-2 rounded-xl text-sm font-bold">
-                No Record
-            </span>
+                                <span class="inline-flex items-center gap-2
+                                             px-3 py-2 rounded-xl border
+                                             border-green-200 bg-green-50
+                                             text-green-700 text-sm font-semibold">
 
-        @endif
-    </div>
+                                    <x-heroicon-o-check-circle class="w-4 h-4"/>
+                                    Present
 
-    <!-- HR ATTENDANCE VERIFICATION -->
-    <div>
-        <p class="text-xs font-semibold text-gray-500 mb-1">
-            HR Attendance
-        </p>
+                                </span>
 
-        @if($monitoring)
+                            @else
 
-            @if($monitoring->attendance_status === 'present')
+                                <span class="inline-flex items-center gap-2
+                                             px-3 py-2 rounded-xl border
+                                             border-red-200 bg-red-50
+                                             text-red-700 text-sm font-semibold">
 
-                <span class="inline-flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-xl text-sm font-bold">
-                    <x-heroicon-o-check-circle class="w-5 h-5"/>
-                    Present
-                </span>
+                                    <x-heroicon-o-x-circle class="w-4 h-4"/>
+                                    Absent
 
-            @else
+                                </span>
 
-                <span class="inline-flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl text-sm font-bold">
-                    <x-heroicon-o-x-circle class="w-5 h-5"/>
-                    Absent
-                </span>
+                            @endif
 
-            @endif
+                        @else
 
-        @else
+                            <span class="inline-flex items-center gap-2
+                                         px-3 py-2 rounded-xl border
+                                         border-amber-200 bg-amber-50
+                                         text-amber-700 text-sm font-semibold">
 
-            <span class="inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-xl text-sm font-bold">
-                <x-heroicon-o-clock class="w-5 h-5"/>
-                Not checked
-            </span>
+                                <x-heroicon-o-clock class="w-4 h-4"/>
+                                Not checked
 
-        @endif
-    </div>
+                            </span>
 
-</div>
+                        @endif
 
+                    </div>
 
+                </div>
 
-                <!-- Class Time -->
+            </div>
 
-                <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {{-- CLASS INFORMATION --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
 
-                    <div class="bg-gray-50 border border-gray-100
-                                rounded-xl p-3">
+                <div class="flex items-center gap-3 rounded-xl
+                            bg-gray-50 border border-gray-100 p-4">
+
+                    <div class="w-10 h-10 rounded-lg bg-white
+                                flex items-center justify-center">
+
+                        <x-heroicon-o-clock class="w-5 h-5 text-[#0E4C6B]"/>
+
+                    </div>
+
+                    <div>
 
                         <p class="text-xs text-gray-500">
                             Class Time
                         </p>
 
-                        <p class="font-semibold text-gray-800 mt-1">
-
+                        <p class="text-sm font-bold text-gray-800 mt-1">
                             {{ date('g:i A', strtotime($schedule->start_time)) }}
-
                             –
-
                             {{ date('g:i A', strtotime($schedule->end_time)) }}
-
                         </p>
 
                     </div>
 
+                </div>
 
-                    <div class="bg-gray-50 border border-gray-100
-                                rounded-xl p-3">
+                <div class="flex items-center gap-3 rounded-xl
+                            bg-gray-50 border border-gray-100 p-4">
+
+                    <div class="w-10 h-10 rounded-lg bg-white
+                                flex items-center justify-center">
+
+                        <x-heroicon-o-calendar-days
+                            class="w-5 h-5 text-[#0E4C6B]"/>
+
+                    </div>
+
+                    <div>
 
                         <p class="text-xs text-gray-500">
                             Schedule Day
                         </p>
 
-                        <p class="font-semibold text-gray-800 mt-1">
+                        <p class="text-sm font-bold text-gray-800 mt-1">
                             {{ $selectedDate->format('l') }}
                         </p>
 
@@ -597,94 +602,103 @@
 
                 </div>
 
+            </div>
 
-                <!-- Existing Verification Information -->
+            {{-- EXISTING VERIFICATION DETAILS --}}
+            @if($monitoring)
 
-                @if($monitoring)
+                <div class="mt-5 rounded-xl border border-gray-100
+                            bg-gray-50 p-4">
 
-                    <div class="mt-5 bg-gray-50 border border-gray-100
-                                rounded-xl p-4">
+                    <p class="text-sm font-bold text-gray-700 mb-2">
+                        Verification Details
+                    </p>
 
-                        <p class="text-sm font-bold text-gray-700 mb-2">
-                            Verification Details
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+                        <p class="text-sm text-gray-600">
+                            Verified by:
+                            <span class="font-semibold text-gray-800">
+                                {{ $monitoring->verifier->first_name ?? 'Unknown' }}
+                                {{ $monitoring->verifier->last_name ?? '' }}
+                            </span>
                         </p>
 
                         <p class="text-sm text-gray-600">
-
-                            Verified by:
-
+                            Date:
                             <span class="font-semibold text-gray-800">
-
-                                {{ $monitoring->verifier->first_name ?? 'Unknown' }}
-                                {{ $monitoring->verifier->last_name ?? '' }}
-
-                            </span>
-
-                        </p>
-
-                        <p class="text-sm text-gray-600 mt-1">
-
-                            Date and time:
-
-                            <span class="font-semibold text-gray-800">
-
                                 {{ $monitoring->verified_at?->format('M d, Y - g:i A') ?? 'Not available' }}
-
                             </span>
-
                         </p>
-
-                        @if($monitoring->remarks)
-
-                            <p class="text-sm text-gray-600 mt-2">
-
-                                Remarks:
-
-                                <span class="text-gray-800">
-                                    {{ $monitoring->remarks }}
-                                </span>
-
-                            </p>
-
-                        @endif
 
                     </div>
 
-                @endif
+                    @if($monitoring->remarks)
 
+                        <p class="text-sm text-gray-600 mt-2">
+                            Remarks:
+                            <span class="text-gray-800">
+                                {{ $monitoring->remarks }}
+                            </span>
+                        </p>
 
-                <!-- Attendance Form -->
+                    @endif
 
-                @if(auth()->user()->hasAdminPermission('room_monitoring', 'full'))
+                </div>
 
-                    <form
-                        method="POST"
-                        action="{{ route('admin.room-monitoring.attendance.store', $room) }}"
-                        class="mt-5 pt-5 border-t border-gray-100 space-y-4">
+            @endif
 
-                        @csrf
+        </div>
 
-                        <input
-                            type="hidden"
-                            name="schedule_id"
-                            value="{{ $schedule->id }}">
+        {{-- ATTENDANCE FORM --}}
+        @if(auth()->user()->hasAdminPermission('room_monitoring', 'full'))
 
-                        <input
-                            type="hidden"
-                            name="date"
-                            value="{{ $date }}">
+            <div class="border-t border-gray-100 bg-gray-50/70 p-5 sm:p-6">
 
+                <div class="flex items-center gap-2 mb-5">
+
+                    <x-heroicon-o-clipboard-document-check
+                        class="w-5 h-5 text-[#0E4C6B]"/>
+
+                    <h4 class="font-bold text-[#0E2958]">
+                        Attendance Verification
+                    </h4>
+
+                </div>
+
+                <form
+                    method="POST"
+                    action="{{ route('admin.room-monitoring.attendance.store', $room) }}"
+                    class="space-y-4">
+
+                    @csrf
+
+                    <input
+                        type="hidden"
+                        name="schedule_id"
+                        value="{{ $schedule->id }}">
+
+                    <input
+                        type="hidden"
+                        name="date"
+                        value="{{ $date }}">
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                         <div>
 
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label class="block text-sm font-semibold
+                                          text-gray-700 mb-2">
+
                                 Attendance Status
+
                             </label>
 
                             <select
                                 name="attendance_status"
                                 required
                                 class="w-full rounded-xl border-gray-300
+                                       bg-white py-3
                                        focus:border-[#0E4C6B]
                                        focus:ring-[#0E4C6B]">
 
@@ -694,9 +708,11 @@
 
                                 <option
                                     value="present"
-                                    @selected(old('schedule_id') == $schedule->id
-                                        ? old('attendance_status') === 'present'
-                                        : ($monitoring?->attendance_status === 'present'))>
+                                    @selected(
+                                        old('schedule_id') == $schedule->id
+                                            ? old('attendance_status') === 'present'
+                                            : ($monitoring?->attendance_status === 'present')
+                                    )>
 
                                     Present
 
@@ -704,9 +720,11 @@
 
                                 <option
                                     value="absent"
-                                    @selected(old('schedule_id') == $schedule->id
-                                        ? old('attendance_status') === 'absent'
-                                        : ($monitoring?->attendance_status === 'absent'))>
+                                    @selected(
+                                        old('schedule_id') == $schedule->id
+                                            ? old('attendance_status') === 'absent'
+                                            : ($monitoring?->attendance_status === 'absent')
+                                    )>
 
                                     Absent
 
@@ -716,11 +734,16 @@
 
                         </div>
 
-
                         <div>
 
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Remarks (Optional)
+                            <label class="block text-sm font-semibold
+                                          text-gray-700 mb-2">
+
+                                Remarks
+                                <span class="font-normal text-gray-400">
+                                    (Optional)
+                                </span>
+
                             </label>
 
                             <textarea
@@ -729,82 +752,90 @@
                                 maxlength="1000"
                                 placeholder="Enter additional observations or remarks..."
                                 class="w-full rounded-xl border-gray-300
+                                       bg-white
                                        focus:border-[#0E4C6B]
                                        focus:ring-[#0E4C6B]">{{ old('schedule_id') == $schedule->id ? old('remarks') : ($monitoring?->remarks ?? '') }}</textarea>
 
                         </div>
 
+                    </div>
 
-                        <div class="flex flex-col sm:flex-row
-                                    sm:items-center sm:justify-between gap-3">
+                    {{-- FORM FOOTER --}}
+                    <div class="flex flex-col sm:flex-row
+                                sm:items-center sm:justify-between
+                                gap-4 pt-3 border-t border-gray-200">
+
+                        <p class="text-xs text-gray-500">
 
                             @if($monitoring)
 
-                                <p class="text-xs text-gray-500">
-                                    Saving changes will create an entry in the attendance audit history.
-                                </p>
+                                Saving changes will create an entry
+                                in the attendance audit history.
 
                             @else
 
-                                <p class="text-xs text-gray-500">
-                                    This instructor has not been checked yet.
-                                </p>
+                                This instructor has not been checked yet.
 
                             @endif
 
-
-                            <button
-                                type="submit"
-                                class="inline-flex items-center justify-center gap-2
-                                       bg-[#0E2958]
-                                       hover:bg-[#163A74]
-                                       text-white font-semibold
-                                       px-5 py-3 rounded-xl
-                                       transition">
-
-                                <x-heroicon-o-check-circle class="w-5 h-5"/>
-
-                                {{ $monitoring ? 'Update Attendance' : 'Save Attendance' }}
-
-                            </button>
-
-                        </div>
-
-                    </form>
-
-                @else
-
-                    <div class="mt-5 pt-4 border-t border-gray-100">
-
-                        <p class="text-sm text-gray-500">
-                            You have view-only access to Room Monitoring.
                         </p>
+
+                        <button
+                            type="submit"
+                            class="w-full sm:w-auto inline-flex
+                                   items-center justify-center gap-2
+                                   bg-[#0E2958] hover:bg-[#163A74]
+                                   text-white font-semibold
+                                   px-6 py-3 rounded-xl
+                                   transition shadow-sm">
+
+                            <x-heroicon-o-check-circle class="w-5 h-5"/>
+
+                            {{ $monitoring ? 'Update Attendance' : 'Save Attendance' }}
+
+                        </button>
 
                     </div>
 
-                @endif
+                </form>
 
+            </div>
 
-                <!-- Change History Preview -->
+        @else
 
-                @if($monitoring && $monitoring->histories->count())
+            <div class="border-t border-gray-100 bg-gray-50/70 p-5">
 
-                    <div class="mt-5 pt-4 border-t border-gray-100">
+                <p class="text-sm text-gray-500">
+                    You have view-only access to Room Monitoring.
+                </p>
 
-                        <p class="text-sm font-bold text-gray-700 mb-3">
-                            Recent Changes
-                        </p>
+            </div>
 
-                        @foreach($monitoring->histories->sortByDesc('changed_at')->take(3) as $history)
+        @endif
 
-                            <div class="text-sm text-gray-600 mb-2">
+        {{-- CHANGE HISTORY --}}
+        @if($monitoring && $monitoring->histories->count())
 
-                                <span class="font-semibold text-gray-800">
+            <div class="border-t border-gray-100 p-5 sm:p-6">
 
+                <p class="text-sm font-bold text-gray-700 mb-3">
+                    Recent Changes
+                </p>
+
+                <div class="space-y-3">
+
+                    @foreach($monitoring->histories->sortByDesc('changed_at')->take(3) as $history)
+
+                        <div class="flex flex-col sm:flex-row
+                                    sm:items-center sm:justify-between
+                                    gap-1 text-sm">
+
+                            <p class="text-gray-700">
+
+                                <span class="font-semibold">
                                     {{ ucfirst($history->old_status) }}
                                     →
                                     {{ ucfirst($history->new_status) }}
-
                                 </span>
 
                                 <span class="text-gray-400">
@@ -814,50 +845,55 @@
                                 {{ $history->changedBy->first_name ?? 'Unknown' }}
                                 {{ $history->changedBy->last_name ?? '' }}
 
-                                <span class="text-gray-400">
-                                    on {{ $history->changed_at?->format('M d, Y g:i A') }}
-                                </span>
+                            </p>
 
-                            </div>
+                            <span class="text-xs text-gray-400">
+                                {{ $history->changed_at?->format('M d, Y g:i A') }}
+                            </span>
 
-                        @endforeach
+                        </div>
 
-                    </div>
-
-                @endif
-
-            </div>
-
-        @empty
-
-            <div class="bg-white rounded-2xl border border-gray-200
-                        shadow-sm p-12 text-center">
-
-                <div class="w-16 h-16 rounded-2xl bg-gray-100
-                            flex items-center justify-center
-                            mx-auto mb-4">
-
-                    <x-heroicon-o-calendar-days
-                        class="w-8 h-8 text-gray-400"/>
+                    @endforeach
 
                 </div>
 
-                <h3 class="text-lg font-semibold text-gray-700">
-                    No scheduled classes
-                </h3>
-
-                <p class="text-sm text-gray-500 mt-1">
-                    There are no classes assigned to this room on
-                    {{ $selectedDate->format('F d, Y') }}.
-                </p>
-
-                <p class="text-xs text-gray-400 mt-2">
-                    No attendance record is required when there is no scheduled class.
-                </p>
-
             </div>
 
-        @endforelse
+        @endif
+
+    </div>
+
+@empty
+
+    <div class="bg-white rounded-2xl border border-gray-200
+                shadow-sm p-12 text-center">
+
+        <div class="w-16 h-16 rounded-2xl bg-gray-100
+                    flex items-center justify-center
+                    mx-auto mb-4">
+
+            <x-heroicon-o-calendar-days
+                class="w-8 h-8 text-gray-400"/>
+
+        </div>
+
+        <h3 class="text-lg font-semibold text-gray-700">
+            No scheduled classes
+        </h3>
+
+        <p class="text-sm text-gray-500 mt-1">
+            There are no classes assigned to this room on
+            {{ $selectedDate->format('F d, Y') }}.
+        </p>
+
+        <p class="text-xs text-gray-400 mt-2">
+            No attendance record is required when there is no scheduled class.
+        </p>
+
+    </div>
+
+@endforelse
+
 
     </div>
 
