@@ -290,10 +290,46 @@ $roomUsage = $roomUsageQuery
         |--------------------------------------------------------------------------
         */
 
-        $activityLogs = ActivityLog::with('user')
+        // Mark the Activity Log as read for this administrator only.
+        // Each admin has an independent last-viewed timestamp.
+        $admin = $request->user();
+        $admin->forceFill([
+            'activity_logs_viewed_at' => now(),
+        ])->save();
+
+        $activityLogs = ActivityLog::with(['user', 'subject'])
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
+
+        // Only logs tied to an existing record receive a destination.
+        // Deleted records and aggregate/bulk actions remain non-clickable.
+        foreach ($activityLogs as $log) {
+            $subject = $log->subject;
+
+            if (!$subject) {
+                $log->activity_url = null;
+                continue;
+            }
+
+            $subjectType = class_basename($subject);
+
+            $log->activity_url = match ($subjectType) {
+                'Building' => route('buildings.index', [
+                    'highlight_building' => $subject->getKey(),
+                ]),
+                'Room' => route('admin.rooms.index', [
+                    'highlight_room' => $subject->getKey(),
+                ]),
+                'User' => route('admin.users', [
+                    'highlight_user' => $subject->getKey(),
+                ]),
+                'CampusLocation' => route('admin.campus-map', [
+                    'highlight_location' => $subject->getKey(),
+                ]),
+                default => null,
+            };
+        }
 
 
         /*

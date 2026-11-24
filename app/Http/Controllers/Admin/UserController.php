@@ -18,14 +18,19 @@ use Illuminate\Support\Facades\Hash;
 use App\Notifications\AccountCreatedNotification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Model;
 
 class UserController extends Controller
 {
     /**
      * Record an activity performed by the authenticated user.
      */
-    private function logActivity(string $action, string $module, string $description): void
-    {
+    private function logActivity(
+        string $action,
+        string $module,
+        string $description,
+        ?Model $subject = null
+    ): void {
         $user = auth()->user();
 
         ActivityLog::create([
@@ -36,6 +41,8 @@ class UserController extends Controller
             'action' => $action,
             'module' => $module,
             'description' => $description,
+            'subject_type' => $subject?->getMorphClass(),
+            'subject_id' => $subject?->getKey(),
         ]);
     }
 
@@ -105,7 +112,8 @@ class UserController extends Controller
         $this->logActivity(
             'Approved',
             'Users',
-            "Approved user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+            "Approved user: {$user->first_name} {$user->last_name} (ID: {$user->id}).",
+            $user
         );
 
         return back()->with(
@@ -126,7 +134,8 @@ class UserController extends Controller
         $this->logActivity(
             'Rejected',
             'Users',
-            "Rejected user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+            "Rejected user: {$user->first_name} {$user->last_name} (ID: {$user->id}).",
+            $user
         );
 
         return back()->with(
@@ -578,7 +587,8 @@ public function storeImportedStudents()
         $this->logActivity(
             'Updated',
             'Users',
-            "Updated user: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+            "Updated user: {$user->first_name} {$user->last_name} (ID: {$user->id}).",
+            $user
         );
 
         return redirect()
@@ -669,7 +679,8 @@ public function store(Request $request)
     $this->logActivity(
         'Created',
         'Users',
-        "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id})."
+        "Created {$user->role} account: {$user->first_name} {$user->last_name} (ID: {$user->id}).",
+        $user
     );
 
     // Send password setup email for active accounts.

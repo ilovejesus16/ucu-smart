@@ -14,60 +14,51 @@ use Illuminate\Support\Facades\Auth;
 
 class CampusMapController extends Controller
 {
-   
+    public function index()
+    {
+        // Get the active academic year
+        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
 
+        // Get all colleges and their saved colors for the legend
+        $colleges = College::orderBy('college_code')->get();
 
+        // Load campus locations and their linked buildings
+        $locations = CampusLocation::with('building')
+            ->orderBy('number')
+            ->get();
 
-public function index()
-{
-    // Get the active academic year
-    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+        // Load buildings, rooms, and their college assignments
+        $buildings = Building::with([
+            'rooms' => function ($query) use ($activeAcademicYear) {
+                $query->orderBy('floor')
+                    ->orderBy('room_number');
 
-    // Get all colleges and their saved colors for the legend
-    $colleges = College::orderBy('college_code')->get();
+                $query->with([
+                    'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
+                        if ($activeAcademicYear) {
+                            $assignmentQuery->where(
+                                'academic_year_id',
+                                $activeAcademicYear->id
+                            );
+                        } else {
+                            $assignmentQuery->whereRaw('1 = 0');
+                        }
 
-    // Load campus locations and their linked buildings
-    $locations = CampusLocation::with('building')
-        ->orderBy('number')
-        ->get();
-
-    // Load buildings, rooms, and their college assignments
-    $buildings = Building::with([
-        'rooms' => function ($query) use ($activeAcademicYear) {
-
-            $query->orderBy('floor')
-                  ->orderBy('room_number');
-
-            $query->with([
-                'collegeAssignments' => function ($assignmentQuery) use ($activeAcademicYear) {
-
-                    if ($activeAcademicYear) {
-                        $assignmentQuery->where(
-                            'academic_year_id',
-                            $activeAcademicYear->id
-                        );
-                    } else {
-                        $assignmentQuery->whereRaw('1 = 0');
+                        $assignmentQuery->with('college');
                     }
+                ]);
+            }
+        ])
+            ->orderBy('building_code')
+            ->get();
 
-                    $assignmentQuery->with('college');
-                }
-            ]);
-        }
-    ])
-    ->orderBy('building_code')
-    ->get();
-
-    return view('admin.campus-map', compact(
-        'locations',
-        'buildings',
-        'activeAcademicYear',
-        'colleges'
-    ));
-}
-
-
-
+        return view('admin.campus-map', compact(
+            'locations',
+            'buildings',
+            'activeAcademicYear',
+            'colleges'
+        ));
+    }
 
     public function savePositions(Request $request)
     {
@@ -133,169 +124,156 @@ public function index()
     }
 
     public function removePosition(\App\Models\CampusLocation $location)
-{
-    $location->map_x = null;
-    $location->map_y = null;
-    $location->save();
+    {
+        $location->map_x = null;
+        $location->map_y = null;
+        $location->save();
 
-    return response()->json([
-        'message' => 'Location removed from the map. You can place it again later.',
-    ]);
-}
-
-
-public function updateBuilding(Request $request, Building $building)
-{
-    $validated = $request->validate([
-        'building_name' => ['required', 'string', 'max:255'],
-        'description' => ['nullable', 'string', 'max:5000'],
-        'total_floor_area' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-        'year_constructed' => ['nullable', 'integer', 'min:1000', 'max:' . (date('Y') + 1)],
-        'classroom_count' => ['nullable', 'integer', 'min:0'],
-        'laboratory_count' => ['nullable', 'integer', 'min:0'],
-        'office_count' => ['nullable', 'integer', 'min:0'],
-        'restroom_count' => ['nullable', 'integer', 'min:0'],
-        'function_room_count' => ['nullable', 'integer', 'min:0'],
-    ]);
-
-    $oldName = $building->building_name;
-    $changedFields = [];
-
-    foreach ($validated as $field => $value) {
-        $oldValue = $building->{$field};
-
-        if ((string) ($oldValue ?? '') !== (string) ($value ?? '')) {
-            $changedFields[] = $field;
-        }
-    }
-
-    DB::transaction(function () use ($building, $validated) {
-        $building->update($validated);
-
-        // Keep linked campus map labels synchronized after renaming.
-        CampusLocation::where('building_id', $building->id)
-            ->update([
-                'name' => $validated['building_name'],
-            ]);
-    });
-
-   
-if (!empty($changedFields)) {
-    try {
-    $userId = Auth::guard('web')->id();
-
-    ActivityLog::create([
-        'user_id' => $userId,
-        'user_name' => Auth::guard('web')->user()?->name ?? 'System Administrator',
-        'module' => 'Campus Map',
-        'action' => 'Updated building information',
-        'description' => sprintf(
-            'Updated building "%s" (Code: %s). Changed fields: %s.',
-            $oldName,
-            $building->building_code,
-            implode(', ', $changedFields)
-        ),
-    ]);
-} catch (\Throwable $e) {
-    report($e);
-}
-}
-
-
-    return redirect()
-        ->route('admin.campus-map')
-        ->with('success', 'Building information updated successfully.');
-}
-
-
-
-public function linkBuilding(Request $request, \App\Models\CampusLocation $location)
-{
-    $validated = $request->validate([
-        'building_id' => [
-            'required',
-            'integer',
-            'exists:buildings,id',
-        ],
-    ]);
-
-    $building = \App\Models\Building::findOrFail(
-        $validated['building_id']
-    );
-
-    \Illuminate\Support\Facades\DB::transaction(function () use ($location, $building) {
-        $location->update([
-            'building_id' => $building->id,
-            'name' => $building->building_name,
+        return response()->json([
+            'message' => 'Location removed from the map. You can place it again later.',
         ]);
-    });
+    }
 
-    return redirect()
-        ->route('admin.campus-map')
-        ->with('success', 'Campus location linked to building successfully.');
-}
+    public function updateBuilding(Request $request, Building $building)
+    {
+        $validated = $request->validate([
+            'building_name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'total_floor_area' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'year_constructed' => ['nullable', 'integer', 'min:1000', 'max:' . (date('Y') + 1)],
+            'classroom_count' => ['nullable', 'integer', 'min:0'],
+            'laboratory_count' => ['nullable', 'integer', 'min:0'],
+            'office_count' => ['nullable', 'integer', 'min:0'],
+            'restroom_count' => ['nullable', 'integer', 'min:0'],
+            'function_room_count' => ['nullable', 'integer', 'min:0'],
+        ]);
 
+        $oldName = $building->building_name;
+        $changedFields = [];
 
+        foreach ($validated as $field => $value) {
+            $oldValue = $building->{$field};
 
-public function updateLocation(Request $request, CampusLocation $location)
-{
-    $validated = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-        'description' => ['nullable', 'string', 'max:5000'],
-        'total_floor_area' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-        'year_constructed' => ['nullable', 'integer', 'min:1000', 'max:' . (date('Y') + 1)],
-        'classroom_count' => ['nullable', 'integer', 'min:0'],
-        'laboratory_count' => ['nullable', 'integer', 'min:0'],
-        'office_count' => ['nullable', 'integer', 'min:0'],
-        'restroom_count' => ['nullable', 'integer', 'min:0'],
-        'function_room_count' => ['nullable', 'integer', 'min:0'],
-    ]);
+            if ((string) ($oldValue ?? '') !== (string) ($value ?? '')) {
+                $changedFields[] = $field;
+            }
+        }
 
-    
-$oldName = $location->name;
-$changedFields = [];
+        DB::transaction(function () use ($building, $validated) {
+            $building->update($validated);
 
-foreach ($validated as $field => $value) {
-    if ((string) ($location->{$field} ?? '') !== (string) ($value ?? '')) {
-        $changedFields[] = $field;
+            // Keep linked campus map labels synchronized after renaming.
+            CampusLocation::where('building_id', $building->id)
+                ->update([
+                    'name' => $validated['building_name'],
+                ]);
+        });
+
+        if (!empty($changedFields)) {
+            try {
+                $userId = Auth::guard('web')->id();
+
+                ActivityLog::create([
+                    'user_id' => $userId,
+                    'user_name' => Auth::guard('web')->user()?->name ?? 'System Administrator',
+                    'module' => 'Campus Map',
+                    'action' => 'Updated building information',
+                    'description' => sprintf(
+                        'Updated building "%s" (Code: %s). Changed fields: %s.',
+                        $oldName,
+                        $building->building_code,
+                        implode(', ', $changedFields)
+                    ),
+                    'subject_type' => $building->getMorphClass(),
+                    'subject_id' => $building->getKey(),
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return redirect()
+            ->route('admin.campus-map')
+            ->with('success', 'Building information updated successfully.');
+    }
+
+    public function linkBuilding(Request $request, \App\Models\CampusLocation $location)
+    {
+        $validated = $request->validate([
+            'building_id' => [
+                'required',
+                'integer',
+                'exists:buildings,id',
+            ],
+        ]);
+
+        $building = \App\Models\Building::findOrFail(
+            $validated['building_id']
+        );
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($location, $building) {
+            $location->update([
+                'building_id' => $building->id,
+                'name' => $building->building_name,
+            ]);
+        });
+
+        return redirect()
+            ->route('admin.campus-map')
+            ->with('success', 'Campus location linked to building successfully.');
+    }
+
+    public function updateLocation(Request $request, CampusLocation $location)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'total_floor_area' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'year_constructed' => ['nullable', 'integer', 'min:1000', 'max:' . (date('Y') + 1)],
+            'classroom_count' => ['nullable', 'integer', 'min:0'],
+            'laboratory_count' => ['nullable', 'integer', 'min:0'],
+            'office_count' => ['nullable', 'integer', 'min:0'],
+            'restroom_count' => ['nullable', 'integer', 'min:0'],
+            'function_room_count' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $oldName = $location->name;
+        $changedFields = [];
+
+        foreach ($validated as $field => $value) {
+            if ((string) ($location->{$field} ?? '') !== (string) ($value ?? '')) {
+                $changedFields[] = $field;
+            }
+        }
+
+        $location->update($validated);
+
+        if (!empty($changedFields)) {
+            try {
+                $userId = Auth::guard('web')->id();
+
+                ActivityLog::create([
+                    'user_id' => $userId,
+                    'user_name' => Auth::guard('web')->user()?->name
+                        ?? 'System Administrator',
+                    'module' => 'Campus Map',
+                    'action' => 'Updated campus location',
+                    'description' => sprintf(
+                        'Updated campus location #%s "%s". Changed fields: %s.',
+                        $location->number,
+                        $oldName,
+                        implode(', ', $changedFields)
+                    ),
+                    'subject_type' => $location->getMorphClass(),
+                    'subject_id' => $location->getKey(),
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return redirect()
+            ->route('admin.campus-map')
+            ->with('success', 'Campus location information updated successfully.');
     }
 }
-
-$location->update($validated);
-
-
-if (!empty($changedFields)) {
-    
-try {
-    $userId = Auth::guard('web')->id();
-
-    ActivityLog::create([
-        'user_id' => $userId,
-        'user_name' => Auth::guard('web')->user()?->name
-            ?? 'System Administrator',
-        'module' => 'Campus Map',
-        'action' => 'Updated campus location',
-        'description' => sprintf(
-            'Updated campus location #%s "%s". Changed fields: %s.',
-            $location->number,
-            $oldName,
-            implode(', ', $changedFields)
-        ),
-    ]);
-} catch (\Throwable $e) {
-    report($e);
-}
-
-}
-
-
-
-    return redirect()
-        ->route('admin.campus-map')
-        ->with('success', 'Campus location information updated successfully.');
-}
-
-
-
-}
-

@@ -13,6 +13,7 @@ use App\Exports\RoomsExport;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\ActivityLog;
+use Illuminate\Database\Eloquent\Model;
 
 class RoomController extends Controller
 {
@@ -72,23 +73,24 @@ class RoomController extends Controller
     }
 
     /**
- * Store Room
- */
-public function store(StoreRoomRequest $request)
-{
-    $room = Room::create($request->validated());
+     * Store Room
+     */
+    public function store(StoreRoomRequest $request)
+    {
+        $room = Room::create($request->validated());
 
-    $this->logActivity(
-        'Created',
-        'Rooms',
-        "Added room: {$room->room_number} to building ID {$room->building_id}"
-    );
+        $this->logActivity(
+            'Created',
+            'Rooms',
+            "Added room: {$room->room_number} to building ID {$room->building_id}",
+            $room
+        );
 
-    return back()->with(
-        'success',
-        'Room added successfully.'
-    );
-}
+        return back()->with(
+            'success',
+            'Room added successfully.'
+        );
+    }
 
     /**
      * View Room (AJAX)
@@ -131,6 +133,13 @@ public function store(StoreRoomRequest $request)
     {
         $room->update($request->validated());
 
+        $this->logActivity(
+            'Updated',
+            'Rooms',
+            "Updated room: {$room->room_number} in building ID {$room->building_id}",
+            $room
+        );
+
         return back()->with(
             'success',
             'Room updated successfully.'
@@ -142,6 +151,14 @@ public function store(StoreRoomRequest $request)
      */
     public function destroy(Room $room)
     {
+        // Record the activity before deleting the room.
+        $this->logActivity(
+            'Deleted',
+            'Rooms',
+            "Deleted room: {$room->room_number} from building ID {$room->building_id}",
+            $room
+        );
+
         $room->delete();
 
         return back()->with(
@@ -155,7 +172,17 @@ public function store(StoreRoomRequest $request)
      */
     public function deleteAll()
     {
+        $roomCount = Room::count();
+
         Room::query()->delete();
+
+        if ($roomCount > 0) {
+            $this->logActivity(
+                'Deleted',
+                'Rooms',
+                "Deleted all rooms ({$roomCount} records)."
+            );
+        }
 
         return redirect()
             ->route('admin.rooms.index')
@@ -232,14 +259,15 @@ public function store(StoreRoomRequest $request)
     public function storeImportedRooms()
     {
         $rooms = session('room_import_preview', []);
+        $importedCount = 0;
 
         foreach ($rooms as $room) {
 
-            if ($room['status'] !== 'new') {
+            if (($room['status'] ?? null) !== 'new') {
                 continue;
             }
 
-            Room::create([
+            $createdRoom = Room::create([
 
                 'building_id' => $room['building_id'],
 
@@ -252,6 +280,15 @@ public function store(StoreRoomRequest $request)
                 'floor' => $room['floor'],
 
             ]);
+
+            $importedCount++;
+
+            $this->logActivity(
+                'Imported',
+                'Rooms',
+                "Imported room: {$createdRoom->room_number} to building ID {$createdRoom->building_id}",
+                $createdRoom
+            );
         }
 
         session()->forget('room_import_preview');
@@ -325,21 +362,27 @@ public function store(StoreRoomRequest $request)
         );
     }
 
+    /**
+     * Record activity in the activity log.
+     */
     private function logActivity(
-    string $action,
-    string $module,
-    string $description
-): void {
-    $user = auth()->user();
+        string $action,
+        string $module,
+        string $description,
+        ?Model $subject = null
+    ): void {
+        $user = auth()->user();
 
-    ActivityLog::create([
-        'user_id' => $user?->id,
-        'user_name' => $user
-            ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
-            : 'Unknown User',
-        'action' => $action,
-        'module' => $module,
-        'description' => $description,
-    ]);
-}
+        ActivityLog::create([
+            'user_id' => $user?->id,
+            'user_name' => $user
+                ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+                : 'Unknown User',
+            'action' => $action,
+            'module' => $module,
+            'description' => $description,
+            'subject_type' => $subject?->getMorphClass(),
+            'subject_id' => $subject?->getKey(),
+        ]);
+    }
 }

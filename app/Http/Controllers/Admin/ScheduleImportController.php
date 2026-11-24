@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\User;
@@ -283,12 +284,18 @@ class ScheduleImportController extends Controller
         $skipped = 0;
         $conflictCount = 0;
 
+        $admin = $request->user();
+        $adminId = $admin?->id;
+        $adminName = trim(($admin?->first_name ?? '') . ' ' . ($admin?->last_name ?? ''));
+
         DB::transaction(function () use (
             $schedules,
             $editedRows,
             $metadata,
             $roomIds,
             $instructorIds,
+            $adminId,
+            $adminName,
             &$imported,
             &$skipped,
             &$conflictCount
@@ -474,6 +481,25 @@ class ScheduleImportController extends Controller
                 );
 
                 $imported++;
+            }
+
+            // Record one aggregate activity for the completed bulk import.
+            // This intentionally has no subject reference because it represents
+            // a batch operation rather than one individual schedule record.
+            if ($imported > 0) {
+                ActivityLog::create([
+                    'user_id' => $adminId,
+                    'user_name' => $adminName !== '' ? $adminName : 'Unknown User',
+                    'action' => 'imported',
+                    'module' => 'Schedules',
+                    'description' => sprintf(
+                        '%d schedules imported for %s, %s. %d records skipped.',
+                        $imported,
+                        $metadata['semester'] ?? 'Unknown semester',
+                        $metadata['school_year'] ?? 'Unknown school year',
+                        $skipped
+                    ),
+                ]);
             }
         });
 

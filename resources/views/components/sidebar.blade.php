@@ -376,6 +376,16 @@ href="{{ route('admin.rooms.index') }}"
 
 <!-- Reports -->
 @if(auth()->user()->hasAdminPermission('reports', 'view'))
+@php
+    $lastActivityLogViewedAt = auth()->user()->activity_logs_viewed_at;
+    $unreadActivityLogsQuery = \App\Models\ActivityLog::query();
+
+    if ($lastActivityLogViewedAt) {
+        $unreadActivityLogsQuery->where('created_at', '>', $lastActivityLogViewedAt);
+    }
+
+    $unreadActivityLogCount = $unreadActivityLogsQuery->count();
+@endphp
 
 <a
     href="{{ route('admin.reports') }}"
@@ -394,8 +404,14 @@ href="{{ route('admin.rooms.index') }}"
     <span>
         Reports
     </span>
-@endif
+
+    @if ($unreadActivityLogCount > 0)
+        <span class="ml-auto inline-flex min-w-6 h-6 items-center justify-center rounded-full bg-red-500 px-2 text-xs font-bold text-white">
+            {{ $unreadActivityLogCount > 99 ? '99+' : $unreadActivityLogCount }}
+        </span>
+    @endif
 </a>
+@endif
 </nav>
            
 

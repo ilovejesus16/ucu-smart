@@ -15,6 +15,7 @@ use App\Exports\BuildingsExport;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\CampusLocation;
+use Illuminate\Database\Eloquent\Model;
 
 class BuildingController extends Controller
 {
@@ -70,7 +71,8 @@ public function store(StoreBuildingRequest $request)
         $this->logActivity(
             'Created',
             'Buildings',
-            "Added building: {$building->building_name} ({$building->building_code})"
+            "Added building: {$building->building_name} ({$building->building_code})",
+            $building
         );
     });
 
@@ -135,15 +137,10 @@ public function store(StoreBuildingRequest $request)
 
     $building->update($data);
     $this->logActivity(
-    'Updated',
-    'Buildings',
-    "Updated building: {$building->building_name} ({$building->building_code})"
-);
-
-    $this->logActivity(
         'Updated',
         'Buildings',
-        "Updated building: {$building->building_name} ({$building->building_code})"
+        "Updated building: {$building->building_name} ({$building->building_code})",
+        $building
     );
 
     return back()->with(
@@ -172,7 +169,8 @@ public function destroy(Building $building)
         $this->logActivity(
             'Deleted',
             'Buildings',
-            "Deleted building: {$building->building_name} ({$building->building_code})"
+            "Deleted building: {$building->building_name} ({$building->building_code})",
+            $building
         );
     });
 
@@ -298,7 +296,8 @@ public function storeImportedBuildings()
             $this->logActivity(
                 'Created',
                 'Buildings',
-                "Imported building: {$createdBuilding->building_name} ({$createdBuilding->building_code})"
+                "Imported building: {$createdBuilding->building_name} ({$createdBuilding->building_code})",
+                $createdBuilding
             );
         }
     });
@@ -396,24 +395,27 @@ private function createCampusLocationForBuilding(Building $building): CampusLoca
         );
     }
 
-    /**
-     * Record activity in the activity log.
-     */
-    private function logActivity(
-        string $action,
-        string $module,
-        string $description
-    ): void {
-        $user = auth()->user();
+/**
+ * Record activity in the activity log.
+ */
+private function logActivity(
+    string $action,
+    string $module,
+    string $description,
+    ?Model $subject = null
+): void {
+    $user = auth()->user();
 
-        ActivityLog::create([
-            'user_id' => $user?->id,
-            'user_name' => $user
-                ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
-                : 'Unknown User',
-            'action' => $action,
-            'module' => $module,
-            'description' => $description,
-        ]);
-    }
+    ActivityLog::create([
+        'user_id' => $user?->id,
+        'user_name' => $user
+            ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+            : 'Unknown User',
+        'action' => $action,
+        'module' => $module,
+        'description' => $description,
+        'subject_type' => $subject?->getMorphClass(),
+        'subject_id' => $subject?->getKey(),
+    ]);
+}
 }
