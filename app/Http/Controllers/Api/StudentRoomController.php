@@ -21,7 +21,9 @@ class StudentRoomController extends Controller
                     'name' => $building->building_name,
                     'rooms_count' => $building->rooms_count,
                     'description' => $building->description,
-                    'image' => $building->image,
+                    'image_url' => $building->image
+    ? asset('storage/' . ltrim($building->image, '/'))
+    : null,
                 ];
             });
 
