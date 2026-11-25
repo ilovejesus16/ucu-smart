@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\CampusLocation;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\BuildingAnnouncement;
 
 class BuildingController extends Controller
 {
@@ -52,6 +53,7 @@ class BuildingController extends Controller
 /**
  * Store Building
  */
+
 public function store(StoreBuildingRequest $request)
 {
     $data = $request->validated();
@@ -67,6 +69,9 @@ public function store(StoreBuildingRequest $request)
         $building = Building::create($data);
 
         $this->createCampusLocationForBuilding($building);
+
+        // Create announcement for students and visitors.
+        $this->createBuildingAnnouncement($building);
 
         $this->logActivity(
             'Created',
@@ -272,6 +277,7 @@ public function deleteAll()
 /**
  * Store Imported Buildings
  */
+
 public function storeImportedBuildings()
 {
     $buildings = session('building_import_preview', []);
@@ -293,6 +299,9 @@ public function storeImportedBuildings()
 
             $this->createCampusLocationForBuilding($createdBuilding);
 
+            // Create announcement for each newly imported building.
+            $this->createBuildingAnnouncement($createdBuilding);
+
             $this->logActivity(
                 'Created',
                 'Buildings',
@@ -308,6 +317,7 @@ public function storeImportedBuildings()
         ->route('buildings.index')
         ->with('success', 'Buildings imported successfully.');
 }
+
 
 
     /**
@@ -346,6 +356,24 @@ public function storeImportedBuildings()
      * Generate the next Building Code (B01, B02, B03...)
      */
     
+
+
+/**
+ * Create a public announcement for a newly added building.
+ */
+private function createBuildingAnnouncement(Building $building): void
+{
+    BuildingAnnouncement::create([
+        'building_id' => $building->id,
+        'building_code' => $building->building_code,
+        'building_name' => $building->building_name,
+        'title' => 'New Building Added!',
+        'message' => $building->building_name
+            . ' (' . $building->building_code . ')'
+            . ' has been added to the UCU Smart+ campus map.',
+    ]);
+}
+
 /**
  * Automatically create an unplaced campus map location for a building.
  */
