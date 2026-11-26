@@ -192,25 +192,20 @@
                     </p>
 
 
-                    <div
-                        class="mt-5
-                               inline-flex
-                               items-center
-                               gap-2
-                               bg-[#0E2958]
-                               text-white
-                               px-4
-                               py-2.5
-                               rounded-xl
-                               text-sm
-                               font-semibold">
+                   <a
+    href="{{ asset('downloads/ucu-smart-plus.apk') }}"
+    download="UCU-Smart-Plus.apk"
+    class="mt-5 inline-flex items-center gap-2
+           bg-[#0E2958] text-white
+           px-4 py-2.5 rounded-xl
+           text-sm font-semibold
+           hover:bg-[#0E4C6B]
+           transition">
 
-                        <x-heroicon-o-arrow-down-tray
-                            class="w-4 h-4"/>
+    <x-heroicon-o-arrow-down-tray class="w-4 h-4"/>
 
-                        Get the Mobile App
-
-                    </div>
+    Get the Mobile App
+</a>
 
                 </div>
 
