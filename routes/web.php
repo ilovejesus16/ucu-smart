@@ -9,7 +9,8 @@ use App\Http\Controllers\Admin\ScheduleImportController;
 use App\Http\Controllers\Admin\RoomMonitoringController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-
+use App\Http\Controllers\Admin\FacilityController;
+use App\Http\Controllers\Admin\FacilityReservationController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Admin\ReportController;
@@ -21,6 +22,7 @@ use App\Models\CampusLocation;
 use App\Models\Building;
 use App\Models\College;
 use App\Models\AcademicYear;
+
 
 
 /*
@@ -143,6 +145,47 @@ Route::get('/visitor', function () {
 Route::middleware('auth')->group(function () {
 
 
+/*
+|--------------------------------------------------------------------------
+| Facility Reservations
+|--------------------------------------------------------------------------
+*/
+
+// Reservation management
+Route::get('/admin/facility-reservations', [FacilityReservationController::class, 'index'])
+    ->middleware('admin.permission:facility_reservations,view')
+    ->name('admin.facility-reservations.index');
+
+Route::post('/admin/facility-reservations', [FacilityReservationController::class, 'store'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.store');
+
+Route::put('/admin/facility-reservations/{reservation}', [FacilityReservationController::class, 'update'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.update');
+
+Route::patch('/admin/facility-reservations/{reservation}/cancel', [FacilityReservationController::class, 'cancel'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.cancel');
+
+// Facility management
+Route::get('/admin/facility-reservations/facilities', [FacilityController::class, 'index'])
+    ->middleware('admin.permission:facility_reservations,view')
+    ->name('admin.facility-reservations.facilities');
+
+Route::post('/admin/facility-reservations/facilities', [FacilityController::class, 'store'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.facilities.store');
+
+Route::put('/admin/facility-reservations/facilities/{facility}', [FacilityController::class, 'update'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.facilities.update');
+
+Route::patch('/admin/facility-reservations/facilities/{facility}/toggle-status', [FacilityController::class, 'toggleStatus'])
+    ->middleware('admin.permission:facility_reservations,full')
+    ->name('admin.facility-reservations.facilities.toggle-status');
+
+
     /*
     |--------------------------------------------------------------------------
     | Admin Dashboard
@@ -164,6 +207,15 @@ Route::middleware('auth')->group(function () {
 Route::get('/admin/users', [UserController::class, 'index'])
     ->middleware('admin.permission:user_management,view')
     ->name('admin.users');
+
+// User Export
+Route::get('/admin/users/export/students', [UserController::class, 'exportStudents'])
+    ->middleware('admin.permission:user_management,view')
+    ->name('admin.users.export.students');
+
+Route::get('/admin/users/export/instructors', [UserController::class, 'exportInstructors'])
+    ->middleware('admin.permission:user_management,view')
+    ->name('admin.users.export.instructors');
 
 Route::post('/admin/users', [UserController::class, 'store'])
     ->middleware('admin.permission:user_management,full')

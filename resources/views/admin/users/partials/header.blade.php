@@ -14,12 +14,54 @@
     {{-- Right: Actions --}}
     <div class="flex flex-wrap gap-3">
 
+        {{-- Export Buttons --}}
+        @if(auth()->user()->hasAdminPermission('user_management', 'view'))
+
+            {{-- Export Students --}}
+            <a
+                href="{{ route('admin.users.export.students') }}"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
+
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     fill="none"
+                     viewBox="0 0 24 24"
+                     stroke-width="1.8"
+                     stroke="currentColor"
+                     class="w-5 h-5">
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M12 16.5V4.5m0 12 3.75-3.75M12 16.5l-3.75-3.75M3 19.5h18"/>
+                </svg>
+
+                Export Students
+            </a>
+
+            {{-- Export Instructors --}}
+            <a
+                href="{{ route('admin.users.export.instructors') }}"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     fill="none"
+                     viewBox="0 0 24 24"
+                     stroke-width="1.8"
+                     stroke="currentColor"
+                     class="w-5 h-5">
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M12 16.5V4.5m0 12 3.75-3.75M12 16.5l-3.75-3.75M3 19.5h18"/>
+                </svg>
+
+                Export Instructors
+            </a>
+
+        @endif
+
         @if(auth()->user()->hasAdminPermission('user_management', 'full'))
 
             {{-- Import Students --}}
             <button
                 type="button"
-                class="open-student-modal inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
+                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
 
                 <svg xmlns="http://www.w3.org/2000/svg"
                      fill="none"
@@ -38,7 +80,7 @@
             {{-- Import Instructors --}}
             <button
                 type="button"
-                class="open-instructor-modal inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 transition">
+                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition whitespace-nowrap"
 
                 <svg xmlns="http://www.w3.org/2000/svg"
                      fill="none"

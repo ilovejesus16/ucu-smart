@@ -325,6 +325,32 @@ href="{{ route('admin.rooms.index') }}"
 
             </a>
 @endif
+
+
+
+{{-- Facility Reservations --}}
+@if(auth()->user()->hasAdminPermission('facility_reservations', 'view'))
+    <a
+        href="{{ route('admin.facility-reservations.index') }}"
+        @click="open = false"
+        class="flex items-center gap-3
+               px-4 py-3
+               rounded-xl
+               transition
+               {{ request()->routeIs('admin.facility-reservations.*')
+                    ? 'bg-[#0E4C6B] shadow-lg'
+                    : 'hover:bg-[#163A74]' }}">
+
+        <x-heroicon-o-calendar-days
+            class="w-6 h-6 flex-shrink-0"/>
+
+        <span>
+            Facility Reservations
+        </span>
+
+    </a>
+@endif
+
 <!-- Campus Navigation -->
 @if(auth()->user()->hasAdminPermission('campus_map', 'view'))
 

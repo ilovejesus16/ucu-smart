@@ -373,13 +373,29 @@ public function storeImportedInstructors()
     /**
      * Export Users.
      */
-    public function export()
-    {
-        return Excel::download(
-            new UsersExport,
-            'users.xlsx'
-        );
-    }
+    
+/**
+ * Export Students.
+ */
+public function exportStudents()
+{
+    return Excel::download(
+        new UsersExport('student'),
+        'ucu_students.xlsx'
+    );
+}
+
+/**
+ * Export Instructors.
+ */
+public function exportInstructors()
+{
+    return Excel::download(
+        new UsersExport('instructor'),
+        'ucu_instructors.xlsx'
+    );
+}
+
 
     /**
      * Download Student CSV Template.

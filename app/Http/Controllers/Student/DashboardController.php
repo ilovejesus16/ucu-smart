@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Room;
 use App\Models\Schedule;
-use App\Models\ClassOccurrence;
+use App\Models\Facility;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -28,28 +28,132 @@ class DashboardController extends Controller
 
     public function buildingRooms(Building $building)
     {
-        $today = Carbon::today();
+        $now = Carbon::now();
+        $today = $now->copy()->startOfDay();
 
         $rooms = $building->rooms()
-            ->with('schedules.instructor')
+            ->with([
+                'schedules.instructor',
+                'schedules.occurrences',
+            ])
             ->orderBy('floor')
             ->orderBy('room_number')
             ->get();
 
         foreach ($rooms as $room) {
+
+            // Default classroom availability.
             $room->occupiedSchedule = $room->schedules
                 ->first(function ($schedule) use ($today) {
+
                     if (!$this->scheduleMatchesDate($schedule->day, $today)) {
                         return false;
                     }
 
-                    $occurrence = $schedule->occurrences()
-                        ->whereDate('class_date', $today->toDateString())
-                        ->first();
+                    $occurrence = $schedule->occurrences
+                        ->first(function ($occurrence) use ($today) {
+                            return $occurrence->class_date
+                                && $occurrence->class_date->toDateString()
+                                    === $today->toDateString();
+                        });
 
                     return $occurrence
                         && $occurrence->status === 'in_progress';
                 });
+
+            // Default status for ordinary classrooms.
+            $room->availabilityStatus = $room->occupiedSchedule
+                ? 'occupied'
+                : 'available';
+
+            $room->currentReservation = null;
+            $room->facilityClasses = collect();
+            $room->facilityReservations = collect();
+
+            // Stop here for ordinary classrooms.
+            if (!$room->facility_id) {
+                continue;
+            }
+
+            // Load the facility and its approved reservations.
+            $facility = Facility::with([
+                'activeReservations',
+            ])->find($room->facility_id);
+
+            $room->facility = $facility;
+
+            if (!$facility) {
+                continue;
+            }
+
+            if (!$facility->is_active) {
+                $room->availabilityStatus = 'inactive';
+                continue;
+            }
+
+            $approvedReservations = $facility->activeReservations()
+                ->whereDate('reservation_date', '>=', $today->toDateString())
+                ->orderBy('reservation_date')
+                ->orderBy('start_time')
+                ->get();
+
+            $room->facilityReservations = $approvedReservations;
+
+            // Find an event currently taking place.
+            $currentReservation = $approvedReservations->first(
+                function ($reservation) use ($now) {
+
+                    return $reservation->reservation_date->toDateString()
+                        === $now->toDateString()
+                        && $reservation->start_time <= $now->format('H:i:s')
+                        && $reservation->end_time > $now->format('H:i:s');
+                }
+            );
+
+            // Find all facility classes scheduled for today.
+            $todayClasses = $room->schedules->filter(
+                function ($schedule) use ($today, $now) {
+
+                    if (!$this->scheduleMatchesDate($schedule->day, $today)) {
+                        return false;
+                    }
+
+                    return (string) $schedule->end_time > $now->format('H:i:s');
+                }
+            )->values();
+
+            $room->facilityClasses = $todayClasses;
+
+            // A class is currently occupying the facility
+            // only when its occurrence is marked in_progress.
+            $currentClass = $todayClasses->first(
+                function ($schedule) use ($today) {
+
+                    return $schedule->occurrences->contains(
+                        function ($occurrence) use ($today) {
+
+                            return $occurrence->class_date
+                                && $occurrence->class_date->toDateString()
+                                    === $today->toDateString()
+                                && $occurrence->status === 'in_progress';
+                        }
+                    );
+                }
+            );
+
+            $room->occupiedSchedule = $currentClass;
+            $room->currentReservation = $currentReservation;
+
+            if ($currentReservation || $currentClass) {
+                $room->availabilityStatus = 'occupied';
+            } elseif (
+                $todayClasses->isNotEmpty()
+                || $approvedReservations->isNotEmpty()
+            ) {
+                $room->availabilityStatus = 'reserved';
+            } else {
+                $room->availabilityStatus = 'available';
+            }
         }
 
         return view('student.rooms.building', compact(
@@ -58,14 +162,17 @@ class DashboardController extends Controller
         ));
     }
 
-    public function roomDetails(Room $room)
-    {
-        $room->load('building');
+   public function roomDetails(Room $room)
+{
+    $now = Carbon::now();
+    $today = $now->copy()->startOfDay();
 
-        $today = Carbon::today();
+    $room->load(['building', 'facility']);
 
+    // Keep the existing classroom behavior unchanged.
+    if (!$room->facility_id || !$room->facility) {
         $schedules = Schedule::where('room_id', $room->id)
-            ->with('instructor')
+            ->with('instructor', 'occurrences')
             ->get();
 
         $schedule = $schedules->first(function ($schedule) use ($today) {
@@ -73,50 +180,70 @@ class DashboardController extends Controller
                 return false;
             }
 
-            $occurrence = $schedule->occurrences()
-                ->whereDate('class_date', $today->toDateString())
-                ->first();
+            $occurrence = $schedule->occurrences->first(function ($occurrence) use ($today) {
+                return $occurrence->class_date
+                    && $occurrence->class_date->toDateString() === $today->toDateString();
+            });
 
-            return $occurrence
-                && $occurrence->status === 'in_progress';
+            return $occurrence && $occurrence->status === 'in_progress';
         });
 
-        return view('student.rooms.show', compact(
-            'room',
-            'schedule'
-        ));
+        return view('student.rooms.show', compact('room', 'schedule'));
     }
 
-    /**
-     * Match imported schedule days such as MTW, ThF,
-     * MTWThF and TWThFSSu.
-     */
-    private function scheduleMatchesDate(
-        ?string $scheduleDays,
-        Carbon $date
-    ): bool {
-        if (!$scheduleDays) {
-            return false;
-        }
+    // Facility room: load all approved upcoming event reservations.
+    $facility = $room->facility;
 
-        $fullDays = [
-            'monday' => 'M',
-            'tuesday' => 'T',
-            'wednesday' => 'W',
-            'thursday' => 'TH',
-            'friday' => 'F',
-            'saturday' => 'S',
-            'sunday' => 'SU',
-        ];
+    $facilityReservations = $facility->activeReservations()
+        ->whereDate('reservation_date', '>=', $today->toDateString())
+        ->orderBy('reservation_date')
+        ->orderBy('start_time')
+        ->get();
 
-        $selectedDay = $fullDays[strtolower($date->format('l'))];
+    $currentReservation = $facilityReservations->first(function ($reservation) use ($now) {
+        return $reservation->reservation_date->toDateString() === $now->toDateString()
+            && $reservation->start_time <= $now->format('H:i:s')
+            && $reservation->end_time > $now->format('H:i:s');
+    });
 
-        $storedDays = strtoupper(
-            preg_replace('/[\s,\/-]+/', '', $scheduleDays)
-        );
+    // A facility may have multiple simultaneous PE classes.
+    $facilityClasses = Schedule::where('room_id', $room->id)
+        ->with('instructor', 'occurrences')
+        ->get()
+        ->filter(function ($schedule) use ($today, $now) {
+            return $this->scheduleMatchesDate($schedule->day, $today)
+                && (string) $schedule->end_time > $now->format('H:i:s');
+        })
+        ->values();
 
-        preg_match_all('/TH|SU|[MTWFS]/', $storedDays, $matches);
+    $currentFacilityClasses = $facilityClasses->filter(function ($schedule) use ($today) {
+        return $schedule->occurrences->contains(function ($occurrence) use ($today) {
+            return $occurrence->class_date
+                && $occurrence->class_date->toDateString() === $today->toDateString()
+                && $occurrence->status === 'in_progress';
+        });
+    })->values();
 
-        return in_array($selectedDay, $matches[0] ?? [], true);
+    if ($currentReservation || $currentFacilityClasses->isNotEmpty()) {
+        $availabilityStatus = 'occupied';
+    } elseif ($facilityClasses->isNotEmpty() || $facilityReservations->isNotEmpty()) {
+        $availabilityStatus = 'reserved';
+    } elseif (!$facility->is_active) {
+        $availabilityStatus = 'inactive';
+    } else {
+        $availabilityStatus = 'available';
     }
+
+    return view('student.rooms.show', [
+        'room' => $room,
+        'schedule' => null,
+        'facility' => $facility,
+        'facilityReservations' => $facilityReservations,
+        'currentReservation' => $currentReservation,
+        'facilityClasses' => $facilityClasses,
+        'currentFacilityClasses' => $currentFacilityClasses,
+        'availabilityStatus' => $availabilityStatus,
+        'now' => $now,
+    ]);
+}
 }
